@@ -1,0 +1,3 @@
+---
+# defaults file for certificates
+certbot_admin_email: rob.coward@devops-consultants.co.uk

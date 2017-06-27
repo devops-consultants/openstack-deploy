@@ -1,0 +1,34 @@
+---
+# tasks file for email
+
+- name: Set up Postfix to relay mail
+  debconf: 
+    name: postfix
+    question: '{{ item.question }}'
+    value: '{{ item.value }}'
+    vtype: '{{ item.vtype }}'
+  with_items:
+    - { question: 'postfix/mailname', value: '{{ ansible_fqdn }}', vtype: 'string' }
+    - { question: 'postfix/main_mailer_type', value: 'Internet Site', vtype: 'string' }
+
+- name: Install Postfix
+  apt:
+    name: postfix
+    state: present
+
+- name: Setup mail aliases
+  lineinfile:
+    dest: /etc/aliases
+    regexp: "{{ item.regex }}"
+    line: "{{ item.line }}"
+    state: present
+  with_items:
+    - { regex: "^root:", line: "root: {{ REAL_EMAIL }}"}
+    - { regex: "^webmaster:", line: "webmaster: root"}
+  notify: New Aliases
+
+- name: Setup Postfix
+  service: 
+    name: postfix
+    state: started
+    enabled: yes

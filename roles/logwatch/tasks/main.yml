@@ -1,0 +1,42 @@
+---
+# tasks file for logwatch
+
+- name: Install required packages
+  apt: 
+    state: installed 
+    pkg: "{{ item }}"
+  with_items: 
+    - logwatch
+
+- name: Email log summary daily
+  lineinfile: 
+    dest: /etc/cron.daily/00logwatch
+    regexp: "^/usr/sbin/logwatch"
+    line: "/usr/sbin/logwatch --output mail --mailto {{ LOGWATCH_EMAIL }} --detail high"
+    state: present 
+    create: yes
+
+- name: Tweak sudo report to be less noisy
+  lineinfile:
+    dest: /etc/logwatch/conf/services/sudo.conf
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    state: present
+    create: true
+  with_items:
+    - regexp: "^\\$ignore_commands ="
+      line: "$ignore_commands = neutron;root;/usr/bin/neutron-rootwrap"
+
+- name: Create logwatch scripts directory
+  file:
+    path: /etc/logwatch/scripts/services
+    state: directory
+    recurse: true
+
+- name: Deploy updated logwatch ssh script
+  copy:
+    src: files/sshd
+    dest: /etc/logwatch/scripts/services/sshd
+    mode: 0755
+    owner: root
+    group: root

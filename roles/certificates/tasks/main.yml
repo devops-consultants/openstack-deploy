@@ -1,0 +1,6 @@
+---
+# tasks file for certificates
+
+- include: certbot.yml
+
+- include: apache.yml

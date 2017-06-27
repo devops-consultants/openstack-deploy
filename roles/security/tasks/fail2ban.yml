@@ -1,0 +1,41 @@
+---
+
+- name:  Install packages
+  yum:
+    name: "{{ item }}"
+    state: installed
+    enablerepo: epel
+  with_items:
+    - fail2ban
+    - fail2ban-server
+    - fail2ban-systemd
+    - fail2ban-mail
+    - fail2ban-firewalld
+  when: ansible_os_family == 'RedHat'
+
+- name: Install required packages
+  apt: 
+    state: installed 
+    pkg: "{{ item }}"
+  with_items: 
+    - fail2ban
+  when: ansible_os_family == 'Debian'
+
+- name: Fail2ban customisation
+  lineinfile:
+    dest: "/etc/fail2ban/jail.conf"
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    state: present
+  with_items:
+    - regexp: "^sender ="
+      line: "sender = fail2ban@{{ ansible_fqdn }}"
+    - regexp: "^destemail ="
+      line: "destemail = rob.coward@devops-consultants.co.uk"
+  notify: restart fail2ban
+
+- name: Start and enable fail2ban
+  service:
+    name: fail2ban
+    state: started
+    enabled: yes

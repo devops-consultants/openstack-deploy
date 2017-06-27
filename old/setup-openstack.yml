@@ -1,0 +1,67 @@
+---
+- name: Configure OpenStack deployment
+  hosts: localhost
+
+  # pre_tasks:
+  #   - name: Get list of clouds that do not support security groups
+  #     os_client_config:
+
+    # - debug:
+    #     var: "{{ item }}"
+    #   with_items: "{{ openstack.clouds | rejectattr('secgroup_source', 'none') | list }}"
+
+  roles:
+
+    - role: openstack_subnet
+      network_name: demo_network1
+      subnet_name: demo_subnet1
+      subnet_cidr: 10.0.0.0/24
+      gateway_ip: 10.0.0.1
+      allocation_pool_start: 10.0.0.10
+      allocation_pool_end: 10.0.0.200
+
+    - role: openstack_subnet
+      network_name: demo_network2
+      subnet_name: demo_subnet2
+      subnet_cidr: 10.0.1.0/24
+      gateway_ip: 10.0.1.1
+      allocation_pool_start: 10.0.1.10
+      allocation_pool_end: 10.0.1.200
+
+    - role: openstack_router
+      router_name: ext-router
+      subnets:
+        - demo_subnet1
+        - demo_subnet2      
+        - sample_subnet
+
+  tasks:
+    - name: Create SSH Keypair
+      os_keypair:
+        state: present
+        name: Rob
+        public_key_file: /Users/rob/.ssh/id_rsa.pub
+
+    # - name: Download cirros-0.3.5-x86_64-disk.img
+    #   get_url:
+    #     url: http://download.cirros-cloud.net/0.3.5/cirros-0.3.5-x86_64-disk.img
+    #     dest: ~/Downloads/cirros-0.3.5-x86_64-disk.img
+
+    # - name: Upload CirrOS Image
+    #   os_image:
+    #     name: "CirrOS 0.3.5"
+    #     state: present
+    #     filename: ~/Downloads/cirros-0.3.5-x86_64-disk.img
+    #     is_public: yes
+
+    # - name: Download CentOS image
+    #   get_url:
+    #     url: http://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud.qcow2
+    #     dest: ~/Downloads/CentOS-7-x86_64-GenericCloud.qcow2
+
+    # - name: Upload CentOS Image
+    #   os_image:
+    #     name: "CentOS7"
+    #     state: present
+    #     filename: ~/Downloads/CentOS-7-x86_64-GenericCloud.qcow2
+    #     is_public: yes

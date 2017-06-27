@@ -1,0 +1,16 @@
+---
+- name: Check if Apache exists
+  stat: path=/etc/init.d/apache2
+  register: apache_status
+
+- name: Update openstack config to use new certs
+  lineinfile:
+    dest: "/etc/apache2/sites-available/{{ item[0] }}"
+    regexp: "^  {{ item[1].key }}"
+    line: "  {{ item[1].key }} \"{{ certbot_output_dir }}/{{ inventory_hostname }}/{{ item[1].value }}\""
+    state: present
+  with_nested:
+    - "{{apache_configs}}"
+    - [ { key: "SSLCertificateFile", value: "fullchain.pem" }, { key: "SSLCertificateKeyFile", value: "privkey.pem" } ]
+  when: apache_status.stat.exists
+  notify: restart apache

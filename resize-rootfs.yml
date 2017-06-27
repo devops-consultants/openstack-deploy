@@ -1,0 +1,7 @@
+---
+- name: Resize the default root filesystem
+  hosts: openstack
+  user: root
+  become: false
+  roles:
+    - filesystems

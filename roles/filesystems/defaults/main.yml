@@ -1,0 +1,12 @@
+---
+# defaults file for filesystems
+
+ROOT_LV: /dev/vg0/root
+RAID_PV: /dev/md2
+RAID_PARTITION: 3
+LV_SIZE_PATTERN: '(?s).*LV Size\s+(\S+) GiB.*'
+ROOT_LV_DESIRED_SIZE: 500
+RAID_PV_DESIRED_SIZE: 1024
+MD_SIZE_PATTERN: '(?s).*Array Size\s+:\s+(\S+) \((\S+) GiB (\S+) GB\).*'
+
+# Array Size : 3902166848 (3721.40 GiB 3995.82 GB)

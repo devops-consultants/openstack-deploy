@@ -1,0 +1,32 @@
+---
+- name: Prepare host for running Docker / Kolla / OpenStack
+  hosts: localhost
+  become: true
+  tasks:
+    - name:  Install Epel Repo
+      yum:
+        name: epel-release
+        state: installed
+
+    - name:  Install packages
+      yum:
+        name: "{{ item }}"
+        state: installed
+      with_items:
+        - htop
+        - iftop
+        - atop
+        - iptables
+
+    - name: Create dummy network interfaces
+      include_role: 
+        name: dummy-network
+      vars:
+        if_name: cloud0
+        ip_addr: 10.0.0.1
+        netmask: 255.255.255.0
+        dummy_dev: dummy0
+
+    - name: Secure the server
+      include_role: 
+        name: security

@@ -1,0 +1,57 @@
+---
+
+- name: Scan VG
+  shell: vgchange -a y
+  args:
+    creates: "{{ROOT_LV}}"
+
+- name: Retrieve LV stats
+  command: "lvdisplay {{ROOT_LV}}"
+  register: root_lv
+  changed_when: False
+
+# - debug:
+#     var: root_lv
+
+- name: Extract LV Size
+  set_fact: root_lv_size="{{ root_lv.stdout | regex_replace(LV_SIZE_PATTERN, "\\1" ) }}"
+  changed_when: False
+
+- debug:
+    var: root_lv_size
+
+- name: Set size to shrink root to
+  set_fact: root_fs_size="{{ ROOT_LV_DESIRED_SIZE - 20 }}"
+  changed_when: False
+
+- debug:
+    msg: "LV Size: {{root_lv_size}} Desired LV: {{ROOT_LV_DESIRED_SIZE}} Root FS Size: {{root_fs_size}} Resize: {{ root_lv_size|int > ROOT_LV_DESIRED_SIZE|int }}"
+
+- name: Resize or not
+  set_fact: resize_fs="{{ root_lv_size|int > ROOT_LV_DESIRED_SIZE|int }}"
+  changed_when: False
+
+- debug:
+    msg: "Shrinking root filesystem"
+  when: resize_fs
+
+- name: Check filesystem
+  shell: "e2fsck -y -f {{ROOT_LV}}"
+  when: resize_fs
+
+- name: Shrink filesystem
+  shell: "resize2fs {{ROOT_LV}} {{root_fs_size}}G"
+  when: resize_fs
+
+- name: Shrink logical volume
+  lvol:
+    vg: vg0
+    lv: root
+    size: "{{ ROOT_LV_DESIRED_SIZE }}G"
+    shrink: yes
+    force: yes
+  when: resize_fs
+
+- name: Grow filesystem to fill the LV
+  shell: "resize2fs {{ROOT_LV}}"
+  when: resize_fs

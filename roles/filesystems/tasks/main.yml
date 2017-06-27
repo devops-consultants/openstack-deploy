@@ -1,0 +1,6 @@
+---
+# tasks file for filesystems
+
+- include: rootfs.yml
+
+- include: pvresize.yml

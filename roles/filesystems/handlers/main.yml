@@ -1,0 +1,5 @@
+---
+# handlers file for filesystems
+
+- name: reboot server
+  shell: "shutdown -r now"

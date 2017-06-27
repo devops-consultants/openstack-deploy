@@ -1,0 +1,115 @@
+---
+
+- name: Enable firewalld
+  service: 
+    name: firewalld 
+    state: started 
+    enabled: yes
+  when: ansible_os_family == 'RedHat'
+
+# - name: Set dmz as default policy
+#   command: firewall-cmd --set-default-zone=dmz
+
+- name: Defined eth0 as public interface
+  firewalld:
+    zone: public
+    permanent: true
+    state: enabled
+    interface: eth0
+  when: ansible_os_family == 'RedHat'
+
+- name: Masquerade outbound traffic
+  firewalld:
+    zone: public
+    masquerade: yes
+    state: enabled
+    permanent: true
+  when: ansible_os_family == 'RedHat'
+
+- name: Enable SSH
+  firewalld:
+    zone: public
+    service: ssh
+    permanent: true
+    state: enabled
+  when: ansible_os_family == 'RedHat'
+
+# # Check the dummy interface exists
+# - name: Check for ethdummy1 interface
+#   stat:
+#     path: /proc/sys/net/ipv4/conf/ethdummy1
+#   register: p
+#   # when: p.stat.isdir is defined and p.stat.isdir
+
+# - name: Defined ethdummy1 as openstack interface
+#   firewalld:
+#     zone: openstack
+#     permanent: true
+#     state: enabled
+#     interface: ethdummy1
+#   when: p.stat.exists and p.stat.isdir
+
+# Ubuntu Firewall config using UFW
+- name: Install required packages
+  apt: 
+    state: installed 
+    pkg: "{{ item }}"
+  with_items: 
+    - ufw
+  when: ansible_os_family == 'Debian'
+
+- name: Setup ufw
+  ufw: 
+    state: enabled 
+    policy: deny
+  when: ansible_os_family == 'Debian'
+
+# Set logging
+- name: Enable Firewall logging
+  ufw:
+    logging: on
+  when: ansible_os_family == 'Debian'
+
+- name: Allow ICMP traffic
+  ufw:
+    rule: allow
+    proto: icmp
+  when: ansible_os_family == 'Debian'
+
+- name: Allow ssh traffic
+  ufw: 
+    rule: limit 
+    port: ssh
+    proto: tcp
+  when: ansible_os_family == 'Debian'
+
+- name: Allow access to horizon 
+  ufw: 
+    rule: allow 
+    port: https
+    proto: tcp
+  when: ansible_os_family == 'Debian'
+
+- name: Allow VNC console access
+  ufw:
+    rule: allow
+    port: 6080
+    proto: tcp
+  when: ansible_os_family == 'Debian'
+
+- name: Whitelist hosts
+  ufw:
+    rule: allow
+    from_ip: "{{item}}"
+    proto: any
+  with_items:
+    - '88.99.28.4'
+    - '88.99.57.107'
+    - '172.16.0.0/24'
+    - '94.130.1.8/29'
+
+- name: Allow cloud traffic
+  ufw:
+    rule: allow
+    to_ip: '94.130.1.8/29'
+    proto: any

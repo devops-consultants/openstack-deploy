@@ -1,0 +1,14 @@
+---
+# vars file for certificates
+apache_configs:
+  - '10-keystone_wsgi_admin.conf'
+  - '10-keystone_wsgi_main.conf'
+  - '10-nova_api_wsgi.conf'
+  - '15-horizon_ssl_vhost.conf'
+  - '25-ceilometer_api.conf'
+  - '25-glance_api.conf'
+  - '25-neutron_api.conf'
+  - '25-nova_vnc.conf'
+certbot_script: /opt/certbot-auto
+certbot_output_dir: "/etc/letsencrypt/live/"
+horizon_webroot: /var/www

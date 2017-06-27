@@ -1,0 +1,103 @@
+---
+
+# - debug:
+#     var: ansible_devices['sda']['partitions']['sda3']
+
+# - debug:
+#     var: ansible_devices['sdb']['partitions']['sdb3']
+
+# pvresize --setphysicalvolumesize 1024G /dev/md2
+#
+#  "ansible_lvm": {
+#     "lvs": {
+#         "root": {
+#             "size_g": "500.00",
+#             "vg": "vg0"
+#         }
+#     },
+#     "vgs": {
+#         "vg0": {
+#             "free_g": "524.00",
+#             "num_lvs": "1",
+#             "num_pvs": "1",
+#             "size_g": "1024.00"
+#         }
+#     }
+# },
+
+- name: Shrink Raid1 PV in vg0 volume group
+  shell: "pvresize --setphysicalvolumesize {{ RAID_PV_DESIRED_SIZE }}G {{ RAID_PV }}"
+  when: ansible_lvm['vgs']['vg0']['size_g']|int > RAID_PV_DESIRED_SIZE
+
+# root@controller ~ # mdadm --detail /dev/md2
+# /dev/md2:
+#         Version : 1.2
+#   Creation Time : Mon Jun  5 11:21:31 2017
+#      Raid Level : raid1
+#      Array Size : 3902166848 (3721.40 GiB 3995.82 GB)
+#   Used Dev Size : 3902166848 (3721.40 GiB 3995.82 GB)
+#    Raid Devices : 2
+#   Total Devices : 2
+#     Persistence : Superblock is persistent
+
+#   Intent Bitmap : Internal
+
+#     Update Time : Sun Jun 25 10:10:54 2017
+#           State : active
+#  Active Devices : 2
+# Working Devices : 2
+#  Failed Devices : 0
+#   Spare Devices : 0
+
+#            Name : rescue:2
+#            UUID : dca2efee:9d3f898b:cb08cb44:b653b74a
+#          Events : 13200
+
+#     Number   Major   Minor   RaidDevice State
+#        0       8        3        0      active sync   /dev/sda3
+#        1       8       19        1      active sync   /dev/sdb3
+
+- name: Retrieve MD stats
+  command: "mdadm --detail {{RAID_PV}}"
+  register: mdadm_md2
+  changed_when: False
+
+# - debug:
+#     var: mdadm_md2
+
+- name: Extract MD Size
+  set_fact: raid_md2_size="{{ mdadm_md2.stdout | regex_replace(MD_SIZE_PATTERN, "\\1" ) }}"
+  changed_when: False
+
+- name: Calculate desired MD size
+  set_fact: desired_md2_size="{{ RAID_PV_DESIRED_SIZE * 1024 * 1024 }}"
+  changed_when: False
+
+- debug:
+    msg: "Actual MD size: {{ raid_md2_size }}  Desired size: {{ desired_md2_size }}"
+
+- name: Shrink raid volume
+  command: "mdadm --grow {{ RAID_PV }} --size={{ desired_md2_size }}"
+  when: raid_md2_size|int != desired_md2_size|int
+
+- name: Re-grow the PV to fill the RAID volume
+  command: "pvresize {{ RAID_PV }}"
+  when: raid_md2_size|int != desired_md2_size|int
+
+- name: sda partition info
+  parted: 
+    device: /dev/sda 
+    unit: MiB
+  register: sda_info
+
+- name: sdb partition info
+  parted: 
+    device: /dev/sdb 
+    unit: MiB
+  register: sdb_info
+
+- debug:
+    var: sda_info['partitions'][RAID_PARTITION]
+
+- debug:
+    var: sdb_info['partitions'][RAID_PARTITION]

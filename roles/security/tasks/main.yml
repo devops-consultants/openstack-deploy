@@ -1,0 +1,13 @@
+---
+# tasks file for security
+
+# Lock-down the firewall
+# - include: firewall.yml
+
+- include: fail2ban.yml
+
+- include: ssh.yml
+
+# Autoupdate
+- include: autoupdate.yml
+

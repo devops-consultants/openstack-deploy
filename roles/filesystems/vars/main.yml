@@ -1,0 +1,3 @@
+---
+# vars file for filesystems
+root_device: /dev/mapper/vg0-root

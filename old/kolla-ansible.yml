@@ -1,0 +1,181 @@
+---
+- name: Prepare the Migration Control Node for running playbooks
+  hosts: localhost
+  become: true
+  vars:
+    network_interface: "cloud0"
+    neutron_external_interface: "cloud0"
+    kolla_internal_vip_address: 10.0.0.10
+    inventory_file: all-in-one
+
+  tasks:
+
+    # Put SELinux in permissive mode, logging actions that would be blocked.
+    - name: SELinux in permissive mode
+      selinux:
+        policy: targeted
+        state: permissive
+
+    - name: Disable firewalld
+      service:
+        name: firewalld
+        state: stopped
+        enabled: no
+
+    - name: Add Docker repository
+      yum_repository:
+        name: docker-repo
+        description: Docker main Repository
+        baseurl: https://yum.dockerproject.org/repo/main/centos/7
+        gpgcheck: yes
+        gpgkey: https://yum.dockerproject.org/gpg
+
+    - name: Add EPEL Repository
+      yum:
+        name: epel-release
+        state: present
+
+    - name: Install pre-req packages
+      yum:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - python-pip 
+        - python-devel 
+        - libffi-devel 
+        - gcc 
+        - openssl-devel
+        - docker-engine
+        - python-docker-py
+        - ntp
+
+    - name: Install python libraries
+      pip:
+        name: "{{ item }}"
+        state: latest
+      with_items:
+        - pip
+ 
+    - name: Install Kolla-ansible
+      pip:
+        name: "kolla-ansible"
+        state: present
+        version: 4.0.0
+
+    - name: Setup ntpd
+      service:
+        name: ntpd
+        state: started
+        enabled: yes
+
+    - name: Disable libvirtd
+      service:
+        name: libvirtd
+        state: stopped
+        enabled: no
+      ignore_errors: true
+
+    - name: Create the drop-in unit directory for docker.service
+      file:
+        path: /etc/systemd/system/docker.service.d
+        state: directory
+        mode: 0755
+
+    - name: Create the drop-in Kolla unit file
+      template:
+        src: systemd-docker-kolla.conf.j2
+        dest: /etc/systemd/system/docker.service.d/kolla.conf
+        mode: 0644
+        
+    - name: Create the drop-in Docker unit file
+      template:
+        src: systemd-docker.j2
+        dest: /etc/systemd/system/docker.service
+        mode: 0644
+
+    - name: Setup Docker config
+      lineinfile: 
+        dest: /etc/sysconfig/docker
+        create: yes
+        regexp: '^{{ item.regexp }}' 
+        line: '{{ item.line }}'
+      with_items:
+        - { regexp: '.*INSECURE_REGISTRY=.*', line: 'INSECURE_REGISTRY="--insecure-registry {{ ansible_default_ipv4.address }}:5000"' }
+
+    - name: just force systemd to reread configs (2.4 and above)
+      systemd:
+        name: docker 
+        daemon_reload: yes
+
+    - name: Start Docker
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Copy Kolla config examples
+      shell: cp -r /usr/share/kolla-ansible/etc_examples/kolla /etc/kolla/
+      args:
+        creates: /etc/kolla/passwords.yml
+
+    - name: Copy Kolla inventory files
+      shell: cp /usr/share/kolla-ansible/ansible/inventory/* .
+      args:
+        creates: all-in-one
+      
+    - name: Setup Kolla config
+      lineinfile: 
+        dest: /etc/kolla/globals.yml
+        regexp: '^{{ item.regexp }}' 
+        line: '{{ item.line }}'
+      with_items:
+        - { regexp: '.*network_interface:.*', line: 'network_interface: "{{ network_interface }}"' }
+        - { regexp: '.*neutron_external_interface:.*', line: 'neutron_external_interface: "{{ neutron_external_interface }}"' }
+        - { regexp: '.*kolla_internal_vip_address:.*', line: 'kolla_internal_vip_address: "{{ kolla_internal_vip_address }}"' }
+
+    - name: Generate Kolla passwords
+      shell: kolla-genpwd && touch /etc/kolla/genpwd.flag
+      args:
+        creates: /etc/kolla/genpwd.flag
+
+    - name: Bootstrap server
+      shell: kolla-ansible -i all-in-one bootstrap-servers
+
+    - name: Pull Kolla images
+      shell: kolla-ansible pull
+
+    - name: Check for nested virtualisation
+      shell: egrep -c '(vmx|svm)' /proc/cpuinfo
+      ignore_errors: true
+      register: nested_vm
+
+    - debug:
+        var: nested_vm
+
+    - name: Create the kolla nova config directory
+      file:
+        path: /etc/kolla/config/nova/
+        state: directory
+        mode: 0755
+      when: nested_vm.stdout == "0"
+
+    - name: Set virtualisation to QEMU
+      copy:
+        dest: /etc/kolla/config/nova/nova-compute.conf
+        owner: root
+        group: root
+        mode: 0644
+        content: |
+          [libvirt]
+          virt_type = qemu
+          cpu_mode = none
+      when: nested_vm.stdout == "0"
+
+    - name: Kolla pre-flight checks
+      shell: kolla-ansible prechecks -i all-in-one
+
+    - name: Deploy Kolla
+      shell: kolla-ansible deploy -i all-in-one
+
+    - name: Kolla Post-deploy
+      shell: kolla-ansible post-deploy

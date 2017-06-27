@@ -1,0 +1,29 @@
+---
+- name: Check if Apache exists
+  stat: path=/etc/init.d/apache2
+  register: apache_status
+
+- name: Download certbot
+  get_url: 
+    url: https://dl.eff.org/certbot-auto 
+    dest: "{{ certbot_script }}" 
+    mode: 0755
+  when: apache_status.stat.exists
+
+- name: Ensure apache is running
+  service:
+    name: apache2
+    state: started
+  when: apache_status.stat.exists
+
+- name: Install certbot and generate cert
+  command: "{{ certbot_script }} certonly --noninteractive --agree-tos --email {{ certbot_admin_email }} -d {{ inventory_hostname }} --webroot -w {{ horizon_webroot}} -d {{ inventory_hostname }}"
+  args:
+    creates: "{{ certbot_output_dir }}/{{ inventory_hostname }}"
+  when: apache_status.stat.exists
+
+- name: Ensure a cron job to auto-renew the cert exists
+  cron: name="daily auto renew cert"
+        special_time=daily
+        job="{{ certbot_script }} renew --no-self-upgrade --post-hook \"service apache2 restart\" --quiet"
+        state=present
