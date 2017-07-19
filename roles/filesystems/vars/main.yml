@@ -1,3 +1,9 @@
 ---
 # vars file for filesystems
 root_device: /dev/mapper/vg0-root
+ROOT_LV: /dev/vg0/root
+RAID_PV: /dev/md2
+RAID_PARTITION: 3
+LV_SIZE_PATTERN: '(?s).*LV Size\s+(\S+) ([TG]iB).*'
+MD_SIZE_PATTERN: '(?s).*Array Size\s+:\s+(\S+) \((\S+) GiB (\S+) GB\).*'
+MD_STABLE_PATTERN: 'md2 : active raid1 (sd\S+)\[(\d)\] (sd\S+)\[(\d)\]\s+(\d+) blocks super 1\.2 \[2/2\] \[UU\]\s+bitmap'

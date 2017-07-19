@@ -1,0 +1,8 @@
+---
+- name: Security Lock-down for openstack hosts
+  hosts: openstack
+  user: root
+  become: false
+  roles:
+    - role: manage_users
+

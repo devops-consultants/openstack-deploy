@@ -11,3 +11,8 @@
 # Autoupdate
 - include: autoupdate.yml
 
+- name: Disable Puppet
+  service:
+    name: puppet
+    state: stopped
+    enabled: false

@@ -1,0 +1,42 @@
+---
+# tasks file for dummy-network
+
+- name: Setup modprobe for {{ if_name }}
+  copy:
+    dest: /etc/modprobe.d/dummy.conf
+    owner: root
+    group: root
+    mode: 0644
+    content: |
+      install dummy /sbin/modprobe --ignore-install dummy; /sbin/ip link set name {{ if_name }} dev {{ dummy_dev }}
+
+- name: Setup modules-load for {{ if_name }} interface
+  copy:
+    dest: /etc/modules-load.d/dummy.conf
+    owner: root
+    group: root
+    mode: 0644
+    content: |
+      # Load dummy.ko at boot
+      dummy
+
+- name: Setup network-scripts for {{ if_name }} interface
+  copy:
+    dest: /etc/sysconfig/network-scripts/ifcfg-{{ if_name }}
+    owner: root
+    group: root
+    mode: 0644
+    content: |
+      NAME={{ if_name }}
+      DEVICE={{ if_name }}
+      MACADDR=00:22:22:ff:ff:ff
+      IPADDR={{ ip_addr }}
+      NETMASK={{ netmask }}
+      ONBOOT=yes
+      TYPE=Ethernet
+      NM_CONTROLLED=no
+
+- name: Bring the {{ if_name }} interface up
+  shell: /sbin/modprobe --ignore-install dummy; /sbin/ip link set name {{ if_name }} dev {{ dummy_dev }}; ifup {{ if_name }}
+  args:
+    creates: /proc/sys/net/ipv4/conf/{{ if_name }}

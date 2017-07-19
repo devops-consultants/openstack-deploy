@@ -76,6 +76,13 @@
 - debug:
     msg: "Actual MD size: {{ raid_md2_size }}  Desired size: {{ desired_md2_size }}"
 
+- name: Wait for RAID array to be stable
+  wait_for:
+    path: /proc/mdstat
+    search_regex: "{{ MD_STABLE_PATTERN }}"
+    sleep: 5
+    timeout: 7200
+
 - name: Shrink raid volume
   command: "mdadm --grow {{ RAID_PV }} --size={{ desired_md2_size }}"
   when: raid_md2_size|int != desired_md2_size|int
@@ -84,11 +91,50 @@
   command: "pvresize {{ RAID_PV }}"
   when: raid_md2_size|int != desired_md2_size|int
 
-- name: sda partition info
+- name: Wait for RAID array to be stable
+  wait_for:
+    path: /proc/mdstat
+    search_regex: "{{ MD_STABLE_PATTERN }}"
+    sleep: 5
+    timeout: 7200
+
+# Start shrinking the underlying disk partitions, starting with sdb
+- name: sdb partition info
   parted: 
-    device: /dev/sda 
+    device: /dev/sdb 
     unit: MiB
-  register: sda_info
+  register: sdb_info
+
+- debug:
+    var: sdb_info['partitions'][RAID_PARTITION]
+
+- name: Check if /dev/sdb needs shrinking
+  set_fact: shrink_sdb="{{ (RAID_PV_DESIRED_SIZE + 1) * 1024 != sdb_info['partitions'][RAID_PARTITION]['size']|int }}"
+
+- name: Fail partition in raid array
+  command: "mdadm --fail {{ RAID_PV }} /dev/sdb{{ RAID_PARTITION }}"
+  when: shrink_sdb
+
+- name: Remove partition from raid array
+  command: "mdadm --remove {{ RAID_PV }} /dev/sdb{{ RAID_PARTITION }}"
+  when: shrink_sdb
+
+- name: Remove old partition on /dev/sdb
+  parted:
+    device: /dev/sdb
+    number: "{{ RAID_PARTITION }}"
+    state: absent
+  when: shrink_sdb
+
+- name: Recreate raid partition on /dev/sdb
+  parted:
+    device: /dev/sdb
+    number: "{{ RAID_PARTITION }}"
+    part_start: "{{ sdb_info['partitions'][RAID_PARTITION]['begin'] |int }}MiB"
+    part_end: "{{ ((RAID_PV_DESIRED_SIZE + 1) * 1024) + (sdb_info['partitions'][RAID_PARTITION]['begin'] |int) }}MiB"
+    unit: MiB
+    state: present
+  when: shrink_sdb
 
 - name: sdb partition info
   parted: 
@@ -97,7 +143,87 @@
   register: sdb_info
 
 - debug:
-    var: sda_info['partitions'][RAID_PARTITION]
+    var: sdb_info['partitions'][RAID_PARTITION]
+
+- name: Re-add /dev/sdb to raid partition
+  command: "mdadm --add {{ RAID_PV }} /dev/sdb{{ RAID_PARTITION }}"
+  when: shrink_sdb
+
+- name: Wait for RAID array to be stable
+  wait_for:
+    path: /proc/mdstat
+    search_regex: "{{ MD_STABLE_PATTERN }}"
+    sleep: 5
+    timeout: 7200
+
+- name: sda partition info
+  parted: 
+    device: /dev/sda 
+    unit: MiB
+  register: sda_info
 
 - debug:
-    var: sdb_info['partitions'][RAID_PARTITION]
+    var: sda_info['partitions'][RAID_PARTITION]
+
+- name: Check if /dev/sda needs shrinking
+  set_fact: shrink_sda="{{ (RAID_PV_DESIRED_SIZE + 1) * 1024 != sda_info['partitions'][RAID_PARTITION]['size']|int }}"
+
+- name: Fail partition in raid array
+  command: "mdadm --fail {{ RAID_PV }} /dev/sda{{ RAID_PARTITION }}"
+  when: shrink_sda
+
+- name: Remove partition from raid array
+  command: "mdadm --remove {{ RAID_PV }} /dev/sda{{ RAID_PARTITION }}"
+  when: shrink_sda
+
+- name: Remove old partition on /dev/sda
+  parted:
+    device: /dev/sda
+    number: "{{ RAID_PARTITION }}"
+    state: absent
+  when: shrink_sda
+
+- name: Recreate raid partition on /dev/sda
+  parted:
+    device: /dev/sda
+    number: "{{ RAID_PARTITION }}"
+    part_start: "{{ sda_info['partitions'][RAID_PARTITION]['begin'] |int }}MiB"
+    part_end: "{{ ((RAID_PV_DESIRED_SIZE + 1) * 1024) + (sda_info['partitions'][RAID_PARTITION]['begin'] |int) }}MiB"
+    unit: MiB
+    state: present
+  when: shrink_sda
+
+- name: sda partition info
+  parted: 
+    device: /dev/sda
+    unit: MiB
+  register: sda_info
+
+- debug:
+    var: sda_info['partitions'][RAID_PARTITION]
+
+- name: Re-add /dev/sda to raid partition
+  command: "mdadm --add {{ RAID_PV }} /dev/sda{{ RAID_PARTITION }}"
+  when: shrink_sda
+
+- name: Create the bricks for GlusterFS
+  parted:
+    device: "{{ item.dev }}"
+    number: 5
+    part_start: "{{ item.start }}MiB"
+    part_end: 100%
+    unit: MiB
+    state: present
+  with_items:
+    - { dev: "/dev/sda", start: "{{ sda_info['partitions'][RAID_PARTITION]['end'] }}" }
+    - { dev: "/dev/sdb", start: "{{ sdb_info['partitions'][RAID_PARTITION]['end'] }}" }
+
+
+- name: Create brick filesystems
+  filesystem:
+    dev: "{{ item }}"
+    fstype: xfs
+    opts: "-i size=512"
+  with_items:
+    - /dev/sda5
+    - /dev/sdb5

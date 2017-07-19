@@ -1,0 +1,106 @@
+---
+
+- name: Install Cinder packages
+  apt:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - cinder-volume
+    - glusterfs-client
+
+- name: Configure Cinder options in cinder.conf
+  ini_file:
+    path: /etc/cinder/cinder.conf
+    section: "{{ item.section }}"
+    option: "{{ item.option }}"
+    value: "{{ item.value }}"
+  with_items:
+    - { section: database, option: connection, value: "mysql+pymysql://lookup('env','CINDER_USER'):{{ lookup('env','CINDER_PASSWORD') }}@{{ db_host }}/cinder" }
+    - { section: DEFAULT, option: rpc_backend, value: "rabbit" }
+    - { section: oslo_messaging_rabbit, option: rabbit_host, value: "{{ rabbit_host }}" }
+    - { section: oslo_messaging_rabbit, option: rabbit_userid, value: "{{ lookup('env','RABBITMQ_USER') }}" }
+    - { section: oslo_messaging_rabbit, option: rabbit_password, value: "{{ lookup('env','RABBITMQ_PASSWORD') }}"}
+    - { section: DEFAULT, option: auth_strategy, value: "keystone" }
+    - { section: keystone_authtoken, option: auth_uri, value: "https://{{ openstack_url }}:5000" }
+    - { section: keystone_authtoken, option: auth_url, value: "https://{{ openstack_url }}:35357/v3" }
+    - { section: keystone_authtoken, option: memcached_servers, value: "{{ memcached_host }}:11211" }
+    - { section: keystone_authtoken, option: auth_type, value: "password" }
+    - { section: keystone_authtoken, option: project_domain_name, value: "default" }
+    - { section: keystone_authtoken, option: user_domain_name, value: "default" }
+    - { section: keystone_authtoken, option: project_name, value: "services" }
+    - { section: keystone_authtoken, option: username, value: "lookup('env','CINDER_USER')" }
+    - { section: keystone_authtoken, option: password, value: "{{ lookup('env','CINDER_PASSWORD') }}" }
+    - { section: DEFAULT, option: my_ip, value: "{{ cinder_host }}" }
+    - { section: DEFAULT, option: glance_api_servers, value: "http://{{ glance_host }}:9292" }
+    - { section: oslo_concurrency, option: lock_path, value: "/var/lib/cinder/tmp" }
+  notify: restart cinder-volume
+
+# gluster volume set VOL_NAME storage.owner-uid CINDER_UID
+# gluster volume set VOL_NAME storage.owner-gid CINDER_GID
+# - getent:
+#     database: passwd
+#     key: cinder
+#   when: "'controller' in group_names"
+
+# - debug:
+#     var: getent_passwd
+#   when: "'controller' in group_names"
+
+# - getent: 
+#     database: group
+#     key: cinder
+#   when: "'controller' in group_names"
+
+# - debug:
+#     var: getent_group
+#   when: "'controller' in group_names"
+
+# - name: Set gluster volume owner-uid
+#   command: "gluster volume set {{ gluster_volume }} storage.owner-uid {{ getent_passwd['cinder'][1] }}"
+#   when: "'controller' in group_names"
+
+# - name: Set gluster volume owner-gid
+#   command: "gluster volume set {{ gluster_volume }} storage.owner-gid {{ getent_group['cinder'][1] }}"
+#   when: "'controller' in group_names"
+
+# - name: Allow insecure ports on gluster volume
+#   command: "gluster volume set {{ gluster_volume }} server.allow-insecure on"
+#   when: "'controller' in group_names"
+
+# - name: Enable gluster client to use insecure ports
+#   lineinfile:
+#     path: /etc/glusterfs/glusterd.vol
+#     regexp: '^\s+option rpc-auth-allow-insecure'
+#     line: "    option rpc-auth-allow-insecure on"
+#     insertbefore: '^end-volume'
+#   notify: restart glusterfs-server
+
+# - name: Configure cinder with gluster volume
+#   lineinfile:
+#     path: /etc/cinder/glusterfs
+#     regexp: '^{{ gluster_host }}:/{{ gluster_volume }}'
+#     line: "{{ gluster_host }}:/{{ gluster_volume }}"
+#     create: yes
+#     owner: root
+#     group: cinder
+#     mode: 0640
+#   notify: restart cinder-volume
+#   when: "'controller' in group_names"
+
+# - name: Configure Cinder options in cinder.conf
+#   ini_file:
+#     path: /etc/cinder/cinder.conf
+#     section: "{{ item.section }}"
+#     option: "{{ item.option }}"
+#     value: "{{ item.value }}"
+#   with_items:
+#     - { section: DEFAULT, option: glusterfs_shares_config, value: "/etc/cinder/glusterfs" }
+#     - { section: DEFAULT, option: volume_driver, value: "cinder.volume.drivers.glusterfs.GlusterfsDriver"}
+#   notify: restart cinder-volume
+#   when: "'controller' in group_names"
+
+# - name: Configure SELinux
+#   seboolean:
+#     name: virt_use_fusefs
+#     state: yes
+#     persistent: yes

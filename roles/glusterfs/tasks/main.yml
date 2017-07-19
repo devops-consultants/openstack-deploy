@@ -1,0 +1,72 @@
+---
+# tasks file for glusterfs
+
+- name: Create brick mount points
+  file:
+    path: "/data/{{ item }}"
+    state: directory
+    recurse: true
+  with_items:
+    - brick1
+    - brick2
+
+- name: Mount bricks
+  mount:
+    path: "{{ item.path }}"
+    src: "{{ item.dev }}"
+    fstype: xfs
+    state: mounted
+  with_items:
+    - { dev: /dev/sda5, path: /data/brick1 }
+    - { dev: /dev/sdb5, path: /data/brick2 }
+
+- name: Install GlusterFS software
+  package:
+    name: glusterfs-server
+    state: present
+
+- name: Start the GlusterFS service
+  service:
+    name: glusterfs-server
+    enabled: true
+    state: started
+
+- name: Probe server2
+  command: "gluster peer probe {{ item }}"
+  when: "'controller' in group_names"
+  with_items: "{{ groups['compute'] }}"
+
+- name: Probe server1
+  command: "gluster peer probe {{ item }}"
+  when: "'compute' in group_names"
+  with_items: "{{ groups['controller'] }}"
+
+- name: Create Gluster Volume directories
+  file:
+    path: "/data/{{ item }}/gv0"
+    state: directory
+    recurse: true
+  with_items:
+    - brick1
+    - brick2
+
+- name: create gluster volume
+  gluster_volume:
+    state: present
+    name: openstack
+    bricks: /data/brick1/gv0,/data/brick2/gv0
+    replicas: 2
+    rebalance: yes
+    cluster: "{{ groups['openstack'] }}"
+  run_once: true
+
+- name: start gluster volume
+  gluster_volume:
+    state: started
+    name: openstack
+  run_once: true
+
+- name: Gluster Volume Info
+  command: "gluster volume info"
+  register: gluster_vol
+  changed_when: false

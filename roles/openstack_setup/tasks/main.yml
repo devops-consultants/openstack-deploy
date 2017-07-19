@@ -1,0 +1,28 @@
+---
+# tasks file for openstack_setup
+
+- cron:
+    name: "Keystone token flush"
+    minute: "*"
+    hour: "*/2"
+    job: "keystone-manage token_flush 2>/dev/null"
+    state: present
+
+- name: Correct vncproxy url
+  ini_file:
+    path: /etc/nova/nova.conf
+    section: "{{ item.section }}"
+    option: "{{ item.option }}"
+    value: "{{ item.value }}"
+  with_items:
+    - { section: "vnc", option: novncproxy_base_url, value: "https://{{ openstack_url }}:6080/vnc_auto.html" }
+  notify: restart nova-compute
+
+- include: ceph_prepare.yml
+
+- include: cinder_control_node.yml
+- include: cinder_storage_node.yml
+# - include: designate.yml
+- include: ceph_integration.yml
+
+- include: users.yml

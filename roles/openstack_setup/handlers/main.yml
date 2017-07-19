@@ -1,0 +1,55 @@
+---
+# handlers file for openstack_setup
+
+- name: restart nova-api
+  service:
+    name: nova-api
+    state: restarted
+
+- name: restart nova-compute
+  service:
+    name: nova-compute
+    state: restarted
+
+- name: restart cinder-scheduler
+  service:
+    name: cinder-scheduler
+    state: restarted
+
+- name: restart cinder-api
+  service:
+    name: cinder-api
+    state: restarted
+
+- name: restart cinder-volume
+  service:
+    name: cinder-volume
+    state: restarted
+
+- name: restart glusterfs-server
+  service:
+    name: glusterfs-server
+    state: restarted
+
+- name: restart glance-api
+  service:
+    name: glance-api
+    state: restarted
+
+- name: restart bind9
+  service:
+    name: bind9
+    state: restarted
+
+- name: restart designate-central
+  service:
+    name: designate-central
+    state: restarted
+
+- name: restart designate-api
+  service:
+    name: designate-api
+    state: restarted
+
+- name: designate-manage pool
+  command: "su -s /bin/sh -c \"designate-manage pool update\" designate"

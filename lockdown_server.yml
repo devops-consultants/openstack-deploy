@@ -1,6 +1,7 @@
 ---
 - name: Security Lock-down for openstack hosts
   hosts: openstack
+  user: rob
   become: true
   # vars:
   #   ansible_sudo_password: berty17c
@@ -10,4 +11,4 @@
     - certificates
     - email
     - logwatch
-    - openstack_setup
+    - ansible-shorewall

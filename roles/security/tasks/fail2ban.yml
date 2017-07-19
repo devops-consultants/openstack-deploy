@@ -21,18 +21,35 @@
     - fail2ban
   when: ansible_os_family == 'Debian'
 
-- name: Fail2ban customisation
-  lineinfile:
-    dest: "/etc/fail2ban/jail.conf"
-    regexp: "{{ item.regexp }}"
-    line: "{{ item.line }}"
-    state: present
+- name: Fail2ban jail.conf customisation
+  ini_file:
+    path: /etc/fail2ban/jail.local
+    section: "{{ item.section }}"
+    option: "{{ item.option }}"
+    value: "{{ item.value }}"
   with_items:
-    - regexp: "^sender ="
-      line: "sender = fail2ban@{{ ansible_fqdn }}"
-    - regexp: "^destemail ="
-      line: "destemail = rob.coward@devops-consultants.co.uk"
+    - { section: DEFAULT, option: sender, value: "fail2ban@{{ ansible_fqdn }}" }
+    - { section: DEFAULT, option: destemail, value: "rob.coward@devops-consultants.co.uk" }
+    - { section: DEFAULT, option: banaction, value: "shorewall" }
+    - { section: DEFAULT, option: bantime, value: "3600" }
+    - { section: sshd, option: enabled, value: "true" }
   notify: restart fail2ban
+    
+- name: Fail2ban jail.conf customisation
+  ini_file:
+    path: /etc/fail2ban/jail.local
+    section: "{{ item.section }}"
+    option: "{{ item.option }}"
+    value: "{{ item.value }}"
+  with_items:
+    - { section: "apache-badbots", option: enabled, value: "true" }
+    - { section: "apache-noscript", option: enabled, value: "true" }
+    - { section: "apache-overflows", option: enabled, value: "true" }
+    - { section: "apache-botsearch", option: enabled, value: "true" }
+    - { section: "apache-fakegooglebot", option: enabled, value: "true" }
+    - { section: "apache-shellshock", option: enabled, value: "true" }
+  notify: restart fail2ban
+  when: "'controller' in group_names"
 
 - name: Start and enable fail2ban
   service:

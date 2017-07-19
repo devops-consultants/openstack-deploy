@@ -1,0 +1,142 @@
+---
+
+- name: Create a new database for cinder
+  mysql_db:
+    name: cinder
+    state: present
+  when: "'controller' in group_names"
+
+- name: Create cinder db users
+  mysql_user:
+    name: "{{ lookup('env','CINDER_USER') }}"
+    host: "{{ item }}"
+    password: "{{ lookup('env','CINDER_PASSWORD') }}"
+    priv: 'cinder.*:ALL'
+  with_items:
+    - "172.16.0.3"
+    - localhost
+    - "127.0.0.1"
+  when: "'controller' in group_names"
+
+- name: Create cinder openstack user
+  os_user:
+    state: present
+    name: "{{ lookup('env','CINDER_USER') }}"
+    password: "{{ lookup('env','CINDER_PASSWORD') }}"
+    email: ""{{ lookup('env','CINDER_USER') }}"@localhost"
+    update_password: on_create
+    domain: default
+  delegate_to: localhost
+  run_once: true
+  become: false
+
+- name: Grant cinder admin on the service project
+  os_user_role:
+    user: cinder
+    role: admin
+    project: services
+  delegate_to: localhost
+  run_once: true
+  become: false
+
+# openstack service create --name cinder  --description "OpenStack Block Storage" volume
+- name: Create cinder service
+  os_keystone_service:
+     state: present
+     name: cinder
+     service_type: volume
+     description: OpenStack Block Service
+  delegate_to: localhost
+  run_once: true
+  become: false
+
+# openstack service create --name cinderv2 --description "OpenStack Block Storage" volumev2
+- name: Create cinderv2 service
+  os_keystone_service:
+     state: present
+     name: cinderv2
+     service_type: volumev2
+     description: OpenStack Block Service
+  delegate_to: localhost
+  run_once: true
+  become: false
+
+- name: Check endpoints
+  command: "openstack endpoint list -f json"
+  register: endpoints
+  changed_when: false
+  delegate_to: localhost
+  run_once: true
+  become: false
+
+# openstack endpoint create --region RegionOne volume public http://controller:8776/v1/%\(tenant_id\)s
+# openstack endpoint create --region RegionOne volume internal http://controller:8776/v1/%\(tenant_id\)s
+# openstack endpoint create --region RegionOne volume admin http://controller:8776/v1/%\(tenant_id\)s
+# openstack endpoint create --region RegionOne volumev2 public http://controller:8776/v2/%\(tenant_id\)s
+# openstack endpoint create --region RegionOne volumev2 internal http://controller:8776/v2/%\(tenant_id\)s
+# openstack endpoint create --region RegionOne volumev2 admin http://controller:8776/v2/%\(tenant_id\)s
+- name: Adding volume endpoints
+  command: "openstack endpoint create --region {{ item.region }} {{ item.type }} {{ item.interface }} {{ item.url }}"
+  vars:
+    endpoint_query: "[*].{type: \"Service Type\", url: URL, region: Region, interface: Interface} | [?type=='{{item.type}}' && interface == '{{item.interface}}'] "
+  when: endpoints.stdout | from_json | json_query(endpoint_query) | count == 0
+  with_items:
+    - { interface: public, type: volume, region: RegionOne, url: 'http://{{ openstack_url }}:8776/v1/%(tenant_id)s'}
+    - { interface: admin, type: volume, region: RegionOne, url: 'http://{{ openstack_url }}:8776/v1/%(tenant_id)s'}
+    - { interface: internal, type: volume, region: RegionOne, url: 'http://{{ openstack_url }}:8776/v1/%(tenant_id)s'}
+    - { interface: public, type: volumev2, region: RegionOne, url: 'http://{{ openstack_url }}:8776/v2/%(tenant_id)s'}
+    - { interface: admin, type: volumev2, region: RegionOne, url: 'http://{{ openstack_url }}:8776/v2/%(tenant_id)s'}
+    - { interface: internal, type: volumev2, region: RegionOne, url: 'http://{{ openstack_url }}:8776/v2/%(tenant_id)s'}
+  delegate_to: localhost
+  run_once: true
+  become: false
+  
+- name: Install Cinder packages
+  apt:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - cinder-api 
+    - cinder-scheduler
+  when: "'controller' in group_names"
+
+- name: Configure Cinder options in cinder.conf
+  ini_file:
+    path: /etc/cinder/cinder.conf
+    section: "{{ item.section }}"
+    option: "{{ item.option }}"
+    value: "{{ item.value }}"
+  with_items:
+    - { section: database, option: connection, value: "mysql+pymysql://"{{ lookup('env','CINDER_USER') }}":{{ "{{ lookup('env','CINDER_PASSWORD') }}" }}@{{ db_host }}/cinder" }
+    - { section: DEFAULT, option: rpc_backend, value: "rabbit" }
+    - { section: oslo_messaging_rabbit, option: rabbit_host, value: "{{ rabbit_host }}" }
+    - { section: oslo_messaging_rabbit, option: rabbit_port, value: "5671" }
+    - { section: oslo_messaging_rabbit, option: rabbit_userid, value: "{{ lookup('env','RABBITMQ_USER') }}" }
+    - { section: oslo_messaging_rabbit, option: rabbit_password, value: "{{ lookup('env','RABBITMQ_PASSWORD') }}" }
+    - { section: oslo_messaging_rabbit, option: rabbit_ha_queues, value: "False" }
+    - { section: oslo_messaging_rabbit, option: rabbit_virtual_host, value: "openstackv" }
+    - { section: oslo_messaging_rabbit, option: rabbit_use_ssl, value: "True" }
+    - { section: DEFAULT, option: auth_strategy, value: "keystone" }
+    - { section: keystone_authtoken, option: auth_uri, value: "https://{{ openstack_url }}:5000" }
+    - { section: keystone_authtoken, option: auth_url, value: "https://{{ openstack_url }}:35357/v3" }
+    - { section: keystone_authtoken, option: memcached_servers, value: "{{ memcached_host }}:11211" }
+    - { section: keystone_authtoken, option: auth_type, value: "password" }
+    - { section: keystone_authtoken, option: project_domain_name, value: "default" }
+    - { section: keystone_authtoken, option: user_domain_name, value: "default" }
+    - { section: keystone_authtoken, option: project_name, value: "services" }
+    - { section: keystone_authtoken, option: username, value: "cinder" }
+    - { section: keystone_authtoken, option: password, value: "{{ lookup('env','CINDER_PASSWORD') }}" }
+    - { section: DEFAULT, option: my_ip, value: "{{ cinder_host }}" }
+    - { section: oslo_concurrency, option: lock_path, value: "/var/lib/cinder/tmp" }
+  notify: restart nova-api
+  notify: restart cinder-scheduler
+  notify: restart cinder-api
+  when: "'controller' in group_names"
+
+- name: Setup nova for block storage
+  ini_file:
+    path: /etc/nova/nova.conf
+    section: cinder
+    option: os_region_name
+    value: "{{ openstack_region }}"
+  notify: restart nova-api

@@ -6,7 +6,7 @@
     creates: "{{ROOT_LV}}"
 
 - name: Retrieve LV stats
-  command: "lvdisplay {{ROOT_LV}}"
+  command: "lvdisplay --units g {{ROOT_LV}}"
   register: root_lv
   changed_when: False
 

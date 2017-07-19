@@ -1,0 +1,5 @@
+---
+# defaults file for manage_users
+
+DEFAULT_USER_NAME: rob
+DEFAULT_PASSWORD: $6$U.d48rR1o9wcB$SkGLPLQfqhDd/G/YDIfVd0B0fYQrkZrWGbUiaQwsmzLwJHkbNygSbYOMomC.WBRTIr.pmniS0csBQEZ9TfFm/.

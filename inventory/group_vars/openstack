@@ -1,0 +1,47 @@
+ansible_ssh_private_key_file: ~/.ssh/id_rsa
+ansible_ssh_extra_args: '-o StrictHostKeyChecking=no'
+
+shorewall: True
+shorewall6: False
+
+shorewall_interfaces:
+  - { zone: "-", interface: br0, options: "tcpflags,logmartians,nosmurfs" }
+  - { zone: lan, interface: br1, options: "" }
+  - { zone: "-", interface: "qbr+", options: "ignore,unmanaged" }
+
+shorewall_policies:
+  - { source: "$FW", dest: all, policy: ACCEPT }
+  - { source: lan, dest: "$FW", policy: ACCEPT }
+  - { source: nova, dest: "$FW", policy: ACCEPT }
+  - { source: cloud, dest: all, policy: ACCEPT }
+  - { source: all, dest: cloud, policy: ACCEPT }
+  - { source: net, dest: all, policy: REJECT }
+  - { source: all, dest: all, policy: REJECT, log_level: info }
+
+shorewall_rules:
+  - section: NEW
+    rules:
+    - { action: "Invalid(DROP)", source: net, dest: "$FW", proto: tcp }
+    - { action: ACCEPT, source: net, dest: "$FW", proto: tcp, dest_port: ssh }
+    - { action: ACCEPT, source: net, dest: "$FW", proto: icmp, dest_port: echo-request }
+    - { action: "VXLan(ACCEPT)", source: nova, dest: "$FW" }
+    - { action: "OpenStack(ACCEPT)", source: net, dest: "$FW" }
+
+shorewall_zones:
+  - { zone: fw, type: firewall }
+  - { zone: net, type: ipv4 }
+  - { zone: lan, type: ipv4 }
+  - { zone: "nova:net", type: ipv4 }
+  - { zone: "cloud:net", type: ipv4 }
+
+shorewall_hosts:
+ - { zone: net, hosts: "br0:0.0.0.0/0" }
+ - { zone: nova, hosts: "br0:88.99.28.4,88.99.57.107" }
+ - { zone: cloud, hosts: "br0:94.130.1.9/29" }
+
+shorewall_stoppedrules:
+ - { dest: "$FW", proto: tcp, dport: 22, action: ACCEPT }
+ - { dest: "$FW", proto: icmp, dport: echo-request, action: ACCEPT }
+
+libvirt_uuid: 688C9873-B443-47E4-BF79-DEB092D0D922
+compute_uuid: 3AA3C174-0982-42F0-83BE-A57FD9FC2671

@@ -1,0 +1,11 @@
+---
+- name: Further condfig for openstack hosts
+  hosts: openstack
+  user: rob
+  become: true
+  # vars:
+  #   ansible_sudo_password: berty17c
+
+  roles:
+    # - glusterfs
+    - openstack_setup

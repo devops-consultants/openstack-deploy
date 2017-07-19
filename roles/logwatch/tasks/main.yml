@@ -25,7 +25,7 @@
     create: true
   with_items:
     - regexp: "^\\$ignore_commands ="
-      line: "$ignore_commands = neutron;root;/usr/bin/neutron-rootwrap"
+      line: "$ignore_commands = neutron;root;/usr/bin/neutron-rootwrap,cinder;root;/usr/bin/cinder-rootwrap"
 
 - name: Create logwatch scripts directory
   file:

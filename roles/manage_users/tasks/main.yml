@@ -1,0 +1,47 @@
+---
+# tasks file for manage_users
+
+- name: Make sure we have a 'wheel' group
+  group:
+    name: wheel
+    state: present
+
+- name: Add deploy user
+  user: 
+    name: "{{ DEFAULT_USER_NAME }}"
+    password: "{{ DEFAULT_PASSWORD }}" 
+    shell: /bin/bash
+
+- name: Add authorized keys for deploy user
+  authorized_key: 
+    user: "{{ DEFAULT_USER_NAME }}"
+    key: "{{ lookup('file', lookup('env','HOME') + '/.ssh/id_rsa.pub') }}"
+
+- name: Add sudoers users to wheel group
+  user:
+    name: "{{ item }}"
+    groups: wheel
+    append: yes
+  with_items:
+    - "{{ DEFAULT_USER_NAME }}"
+
+- name: Allow 'wheel' group to have passwordless sudo
+  lineinfile:
+    dest: /etc/sudoers
+    state: present
+    regexp: '^%wheel'
+    line: '%wheel ALL=(ALL) NOPASSWD: ALL'
+    validate: visudo -cf %s
+
+# - name: Add deploy user to sudoers.d
+#   lineinfile: 
+#     dest: "/etc/sudoers.d/{{ DEFAULT_USER_NAME }}"
+#     regexp: "{{ DEFAULT_USER_NAME }} ALL"
+#     line: "{{ DEFAULT_USER_NAME }} ALL=(ALL) NOPASSWD:ALL"
+#     state: present
+#     create: yes
+
+- name: Remove default users
+  user: 
+    name: centos
+    state: absent

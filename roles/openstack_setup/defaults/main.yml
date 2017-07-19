@@ -1,0 +1,17 @@
+---
+# defaults file for openstack_setup
+
+openstack_region: RegionOne
+openstack_url: controller.devops-consultants.com
+db_host: 172.16.0.3
+rabbit_host: controller.devops-consultants.com.internal
+rabbit_userid: openstack
+memcached_host: 172.16.0.3
+cinder_host: 172.16.0.3
+gluster_volume: openstack
+gluster_host: 172.16.0.3
+glance_host: 172.16.0.3
+designate_host: 172.16.0.3
+storage_backend: ceph
+# storage_backend: glusterfs
+ceph_deploy_user: cephdeploy

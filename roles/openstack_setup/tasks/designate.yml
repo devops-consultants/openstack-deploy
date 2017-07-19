@@ -1,0 +1,172 @@
+---
+
+- name: Create a new database for designate
+  mysql_db:
+    name: designate
+    state: present
+  when: "'controller' in group_names"
+
+- name: Create designate db users
+  mysql_user:
+    name: "{{ lookup('env','DESIGNATE_USER') }}"
+    host: "{{ item }}"
+    password: "{{ lookup('env','DESIGNATE_PASSWORD') }}"
+    priv: 'designate.*:ALL'
+  with_items:
+    - localhost
+    - "172.16.0.3"
+    - "127.0.0.1"
+  when: "'controller' in group_names"
+
+- name: Create designate openstack user
+  os_user:
+    state: present
+    name: "{{ lookup('env','DESIGNATE_USER') }}"
+    password: "{{ lookup('env','DESIGNATE_PASSWORD') }}"
+    email: "designate@localhost"
+    update_password: on_create
+    domain: default
+  delegate_to: localhost
+  run_once: true
+  become: false
+
+- name: Grant designate admin on the service project
+  os_user_role:
+    user: designate
+    role: admin
+    project: services
+  delegate_to: localhost
+  run_once: true
+  become: false
+
+- name: Create designate service
+  os_keystone_service:
+     state: present
+     name: designate
+     service_type: dns
+     description: DNS
+  delegate_to: localhost
+  run_once: true
+  become: false
+
+- name: Check endpoints
+  command: "openstack endpoint list -f json"
+  register: endpoints
+  changed_when: false
+  delegate_to: localhost
+  run_once: true
+  become: false
+
+# openstack endpoint create --region RegionOne  dns public http://controller:9001/
+- name: Adding dns endpoints
+  command: "openstack endpoint create --region {{ item.region }} {{ item.type }} {{ item.interface }} {{ item.url }}"
+  vars:
+    endpoint_query: "[*].{type: \"Service Type\", url: URL, region: Region, interface: Interface} | [?type=='{{item.type}}' && interface == '{{item.interface}}'] "
+  when: endpoints.stdout | from_json | json_query(endpoint_query) | count == 0
+  with_items:
+    - { interface: public, type: dns, region: RegionOne, url: 'http://{{ openstack_url }}:9001'}
+  delegate_to: localhost
+  run_once: true
+  become: false
+
+- name: Install Designate packages
+  apt:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - designate 
+    - bind9
+  when: "'controller' in group_names"
+
+- name: Configure named.conf.options
+  lineinfile:
+    path: /etc/bind/named.conf.options
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    insertbefore: '^};'
+  with_items:
+    - { regexp: '^\s+allow-new-zones', line: '        allow-new-zones yes;' }
+    - { regexp: '^\s+request-ixfr', line: '        request-ixfr no;' }
+    - { regexp: '^\s+recursion', line: '        recursion no;' }
+  when: "'controller' in group_names"
+  notify: restart bind9
+
+- name: Create RNDC key
+  command: "rndc-confgen -a -k designate -c /etc/designate/rndc.key"
+  args:
+    creates: /etc/designate/rndc.key
+  when: "'controller' in group_names"
+  notify: restart bind9
+
+- name: Copy designate named config
+  template:
+    src: named.designate.conf
+    dest: /etc/bind/named.designate.conf
+  when: "'controller' in group_names"
+  notify: restart bind9
+
+- name: Include designate config in named.conf
+  lineinfile:
+    path: /etc/bind/named.conf
+    regexp: "include \"/etc/bind/named.designate.conf\";"
+    line: "include \"/etc/bind/named.designate.conf\";"
+  when: "'controller' in group_names"
+  notify: restart bind9
+
+- name: Configure Designate options in designate.conf
+  ini_file:
+    path: /etc/designate/designate.conf
+    section: "{{ item.section }}"
+    option: "{{ item.option }}"
+    value: "{{ item.value }}"
+  with_items:
+    - { section: "service:api", option: api_host, value: "0.0.0.0" }
+    - { section: "service:api", option: api_port, value: "9001" }
+    - { section: "service:api", option: auth_strategy, value: "keystone" }
+    - { section: "service:api", option: enable_api_v1, value: "True" }
+    - { section: "service:api", option: enabled_extensions_v1, value: "quotas, reports" }
+    - { section: "service:api", option: enable_api_v2, value: "True" }
+    - { section: keystone_authtoken, option: auth_host, value: "{{ designate_host }}" }
+    - { section: keystone_authtoken, option: auth_port, value: "35357" }
+    - { section: keystone_authtoken, option: auth_protocol, value: "https" }
+    - { section: keystone_authtoken, option: admin_tenant_name, value: "services" }
+    - { section: keystone_authtoken, option: admin_user, value: "{{ lookup('env','DESIGNATE_USER') }}" }
+    - { section: keystone_authtoken, option: admin_password, value: "{{ lookup('env','DESIGNATE_PASSWORD') }}" }
+    - { section: "service:worker", option: enabled, value: "True" }
+    - { section: "service:worker", option: notify, value: "True" }
+    - { section: "storage:sqlalchemy", option: connection, value: "mysql+pymysql://{{ lookup('env','DESIGNATE_USER') }}:{{ lookup('env','DESIGNATE_PASSWORD') }}@{{ db_host }}/designate" }
+  notify: restart designate-central
+  notify: restart designate-api
+  when: "'controller' in group_names"
+
+- name: Populate Designate database
+  command: "su -s /bin/sh -c \"designate-manage database sync\" designate"
+  when: "'controller' in group_names"
+
+- name: Copy designate pools.yml
+  template:
+    src: pools.yml
+    dest: /etc/designate/pools.yaml
+  when: "'controller' in group_names"
+  notify: designate-manage pool
+
+- name: Install Designate service packages
+  apt:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - designate-zone-manager
+    - designate-pool-manager
+    - designate-mdns
+  when: "'controller' in group_names"
+
+- name: Start designate services
+  service:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  with_items:
+    - designate-zone-manager
+    - designate-pool-manager
+    - designate-mdns
+  when: "'controller' in group_names"

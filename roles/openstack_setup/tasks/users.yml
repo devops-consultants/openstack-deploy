@@ -1,0 +1,39 @@
+---
+
+- name: Remove demo openstack user
+  os_user:
+    state: absent
+    name: demo
+  delegate_to: localhost
+  run_once: true
+  become: false
+
+- name: Create cinder openstack user
+  os_user:
+    state: present
+    name: rcoward
+    password: "{{ my_password }}"
+    email: "rob.coward@devops-consultants.co.uk"
+    update_password: on_create
+    domain: default
+  delegate_to: localhost
+  run_once: true
+  become: false
+
+- name: Grant me admin on the openstack project
+  os_user_role:
+    user: rcoward
+    role: admin
+    project: openstack
+  delegate_to: localhost
+  run_once: true
+  become: false
+
+- name: Grant me admin on the admin project
+  os_user_role:
+    user: rcoward
+    role: admin
+    project: admin
+  delegate_to: localhost
+  run_once: true
+  become: false
