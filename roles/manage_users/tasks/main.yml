@@ -15,7 +15,7 @@
 - name: Add authorized keys for deploy user
   authorized_key: 
     user: "{{ DEFAULT_USER_NAME }}"
-    key: "{{ lookup('file', lookup('env','HOME') + '/.ssh/id_rsa.pub') }}"
+    key: "{{ lookup('file', lookup('env','HOME') + '/.ssh/rob.pub') }}"
 
 - name: Add sudoers users to wheel group
   user:
