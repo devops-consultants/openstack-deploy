@@ -14,9 +14,9 @@ node('master') {
                              usernamePassword(credentialsId: 'MY_OPENSTACK_USER', passwordVariable: 'MY_OS_PASSWORD', usernameVariable: 'MY_OS_USER')]) {
 
                 withEnv(['ANSIBLE_FORCE_COLOR=true']) {
-                    sh "which ansible;
-                        ansible --version;
-                        ansible-galaxy install -r requirements.yml"
+                    sh "which ansible"
+                    sh "ansible --version"
+                    sh "ansible-galaxy install -r requirements.yml"
                 }
             }
         }
