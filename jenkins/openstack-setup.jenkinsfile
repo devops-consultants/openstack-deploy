@@ -1,0 +1,25 @@
+node('master') {
+    timestamps {
+    ansiColor('xterm') {
+        // some block
+
+        stage('Checkout') {
+            checkout scm
+        }
+
+        stage('Run Playbook'){
+            withCredentials([usernamePassword(credentialsId: 'CINDER_USER', passwordVariable: 'CINDER_PASSWORD', usernameVariable: 'CINDER_USER'), 
+                             usernamePassword(credentialsId: 'DESIGNATE_USER', passwordVariable: 'DESIGNATE_PASSWORD', usernameVariable: 'DESIGNATE_USER'), 
+                             usernamePassword(credentialsId: 'RABBITMQ_USER', passwordVariable: 'RABBITMQ_PASSWORD', usernameVariable: 'RABBITMQ_USER'), 
+                             usernamePassword(credentialsId: 'MY_OPENSTACK_USER', passwordVariable: 'MY_OS_PASSWORD', usernameVariable: 'MY_OS_USER')]) {
+
+                withEnv(['ANSIBLE_FORCE_COLOR=true']) {
+                    sh "which ansible
+                        ansible --version
+                        ansible-galaxy install -r requirements.yml"
+                }
+            }
+        }
+
+    }}
+}
