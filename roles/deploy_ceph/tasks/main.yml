@@ -33,7 +33,7 @@
   apt_repository:
     repo: "deb https://download.eu.ceph.com/debian/ {{ ansible_distribution_release }} main "
     state: present
-    filename: ceph.list
+    filename: /etc/apt/sources.list.d/ceph.list
 
 - name: Install Ceph packages
   apt:
