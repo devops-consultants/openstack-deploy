@@ -29,3 +29,53 @@
     - { dev: /dev/sda5, path: /data/brick1 }
     - { dev: /dev/sdb5, path: /data/brick2 }
 
+- name: Add Ceph repository
+  apt_repository:
+    repo: "deb https://download.eu.ceph.com/debian/ {{ ansible_distribution_release }} main "
+    state: present
+    filename: ceph.list
+
+- name: Install Ceph packages
+  apt:
+    name: "{{ item }}"
+    update_cache: yes
+  with_items:
+    - ceph-deploy
+    - ntp
+
+- name: Create Ceph cluster directory
+  file:
+    path: "~/ceph-cluster"
+    state: directory
+    recurse: true
+  become: false
+  when: "'controller' in group_names"
+
+- name: Upload my ssh key
+  copy:
+    src: "{{ ansible_ssh_private_key_file }}"
+    dest: ~/.ssh/id_rsa
+  become: false
+  when: "'controller' in group_names"
+
+- name: Initialise Ceph cluster
+  shell: "ceph-deploy new {{ ansible_br1['ipv4']['address'] }}"  
+  args:
+    chdir: ~/ceph-cluster
+    creates: ~/ceph-cluster/ceph.conf
+  become: false
+  when: "'controller' in group_names"
+
+- name: Configure Cinder options in cinder.conf
+  ini_file:
+    path: ~/ceph-cluster/ceph.conf
+    section: "{{ item.section }}"
+    option: "{{ item.option }}"
+    value: "{{ item.value }}"
+  with_items:
+    - { section: global, option: "osd pool default size", value: "2" }
+    - { section: global, option: "public network", value: "{{ ansible_br1['ipv4']['network']  }}/16" }
+    - { section: global, option: "ms bind ipv6", value: "false" }
+  become: false
+  when: "'controller' in group_names"
+  
