@@ -69,7 +69,7 @@
     regexp: "^{{ hostvars[item]['ansible_br1']['ipv4']['address'] }}"
     line: "{{ hostvars[item]['ansible_br1']['ipv4']['address'] }} {{ hostvars[item]['ansible_fqdn'] }}.internal {{ hostvars[item]['ansible_hostname'] }}.internal"
     state: present
-  with_items: groups['openstack']  
+  with_items: "{{ groups['openstack'] }}" 
 
 - name: Initialise Ceph cluster
   shell: "ceph-deploy new {{ ansible_hostname }}.internal"  
