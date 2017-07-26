@@ -38,7 +38,7 @@
   apt_repository:
     repo: "deb https://download.ceph.com/debian/ {{ ansible_distribution_release }} main "
     state: present
-    filename: /etc/apt/sources.list.d/ceph.list
+    filename: /etc/apt/sources.list.d/ceph
 
 - name: Install Ceph packages
   apt:
@@ -63,8 +63,16 @@
   become: false
   when: "'controller' in group_names"
 
+- name: Configure internal entries in /etc/hosts
+  lineinfile:
+    dest: /etc/hosts
+    regexp: "^{{ hostvars[item]['ansible_br1']['ipv4']['address'] }}"
+    line: "{{ hostvars[item]['ansible_br1']['ipv4']['address'] }} {{ hostvars[item]['ansible_fqdn'] }}.internal {{ hostvars[item]['ansible_hostname'] }}.internal"
+    state: present
+  with_items: groups['openstack']  
+
 - name: Initialise Ceph cluster
-  shell: "ceph-deploy new {{ ansible_br1['ipv4']['address'] }}"  
+  shell: "ceph-deploy new {{ ansible_hostname }}.internal"  
   args:
     chdir: ~/ceph-cluster
     creates: ~/ceph-cluster/ceph.conf
