@@ -31,7 +31,7 @@
 
 - name: Add Ceph repository
   apt_repository:
-    repo: "deb https://download.eu.ceph.com/debian/ {{ ansible_distribution_release }} main "
+    repo: "deb https://download.ceph.com/debian/ {{ ansible_distribution_release }} main "
     state: present
     filename: /etc/apt/sources.list.d/ceph.list
 
