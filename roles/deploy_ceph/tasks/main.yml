@@ -1,6 +1,15 @@
 ---
 # tasks file for deploy_ceph
 
+- name: Create brick filesystems
+  filesystem:
+    dev: "{{ item }}"
+    fstype: xfs
+    opts: "-i size=512"
+  with_items:
+    - /dev/sda5
+    - /dev/sdb5
+
 - name: Create brick mount points
   file:
     path: "/data/{{ item }}"
