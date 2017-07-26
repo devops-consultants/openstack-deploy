@@ -29,6 +29,11 @@
     - { dev: /dev/sda5, path: /data/brick1 }
     - { dev: /dev/sdb5, path: /data/brick2 }
 
+- name: Install Ceph apt-key
+  apt_key:
+    url: "https://download.ceph.com/keys/release.asc"
+    state: present
+
 - name: Add Ceph repository
   apt_repository:
     repo: "deb https://download.ceph.com/debian/ {{ ansible_distribution_release }} main "
