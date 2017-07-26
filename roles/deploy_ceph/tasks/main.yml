@@ -1,0 +1,22 @@
+---
+# tasks file for deploy_ceph
+
+- name: Create brick mount points
+  file:
+    path: "/data/{{ item }}"
+    state: directory
+    recurse: true
+  with_items:
+    - brick1
+    - brick2
+
+- name: Mount bricks
+  mount:
+    path: "{{ item.path }}"
+    src: "{{ item.dev }}"
+    fstype: xfs
+    state: mounted
+  with_items:
+    - { dev: /dev/sda5, path: /data/brick1 }
+    - { dev: /dev/sdb5, path: /data/brick2 }
+

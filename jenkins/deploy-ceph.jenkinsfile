@@ -8,7 +8,6 @@ node('master') {
 
     timestamps {
     ansiColor('xterm') {
-        // some block
 
         stage('Checkout') {
             checkout scm
@@ -24,6 +23,7 @@ node('master') {
                     sh "which ansible"
                     sh "ansible --version"
                     sh "ansible-galaxy install -r requirements.yml"
+                    sh "ansible-playbook -v deploy-ceph.yml"
                 }
             }
         }

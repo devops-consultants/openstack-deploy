@@ -1,0 +1,8 @@
+---
+- name: Deploy Ceph Cluster
+  hosts: openstack
+  user: rob
+  become: true
+
+  roles:
+    - deploy_ceph
