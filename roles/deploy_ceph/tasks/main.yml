@@ -93,3 +93,5 @@
   become: false
   when: "'controller' in group_names"
   
+  - name: Install Ceph packages
+    shell: "ceph-deploy install {{ groups['openstack']|map('extract', hostvars, 'ansible_hostname')| map('map_format', '%s.local' )|join(" ") }}"
