@@ -18,6 +18,8 @@ class FilterModule(object):
     ''' jinja2 filters '''
 
     def filters(self):
-        return {
+        filters = {
             'map_format': map_format,
         }
+
+        return filters

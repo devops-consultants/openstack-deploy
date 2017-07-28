@@ -93,5 +93,8 @@
   become: false
   when: "'controller' in group_names"
   
+- debug:
+    var: groups['openstack'] | map('extract', hostvars, 'ansible_hostname') | map('map_format', '%s.local' ) | list | join(" ")
+
   - name: Install Ceph packages
-    shell: "ceph-deploy install {{ groups['openstack']|map('extract', hostvars, 'ansible_hostname')| map('map_format', '%s.local' )|join(" ") }}"
+    shell: "ceph-deploy install {{ groups['openstack'] | map('extract', hostvars, 'ansible_hostname') | map('map_format', '%s.local' ) | list | join(" ") }}"
