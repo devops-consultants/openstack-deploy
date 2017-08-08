@@ -123,3 +123,10 @@
     chdir: ~/ceph-cluster
   become: false
   when: "'controller' in group_names"
+
+- name: Activate OSDs
+  shell: "ceph-deploy osd activate {{ groups['openstack'] | map('extract', hostvars, 'ansible_hostname') | map('map_format', '%s.internal:/data/brick1' ) | list | join(' ') }} {{ groups['openstack'] | map('extract', hostvars, 'ansible_hostname') | map('map_format', '%s.internal:/data/brick2' ) | list | join(' ') }}"
+  args:
+    chdir: ~/ceph-cluster
+  become: false
+  when: "'controller' in group_names"
