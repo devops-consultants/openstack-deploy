@@ -135,14 +135,14 @@
 
 - name: Deploy Metadata Server
   shell: "ceph-deploy mds create {{ groups['controller'] | map('extract', hostvars, 'ansible_hostname') | map('map_format', '%s.internal' ) | list | join(' ') }}"
-    args:
+  args:
     chdir: ~/ceph-cluster
   become: false
   when: "'controller' in group_names"
 
 - name: Deploy Ceph Object Gateway
   shell: "ceph-deploy rgw create {{ groups['controller'] | map('extract', hostvars, 'ansible_hostname') | map('map_format', '%s.internal' ) | list | join(' ') }}"
-    args:
+  args:
     chdir: ~/ceph-cluster
   become: false
   when: "'controller' in group_names"
