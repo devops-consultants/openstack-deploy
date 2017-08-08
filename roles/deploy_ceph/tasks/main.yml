@@ -93,7 +93,33 @@
   become: false
   when: "'controller' in group_names"
   
+# - name: Check installed packages
+#   shell: "apt list --installed"
+#   register: apt_list
+
 - name: Install Ceph packages
   shell: "ceph-deploy install {{ groups['openstack'] | map('extract', hostvars, 'ansible_hostname') | map('map_format', '%s.internal' ) | list | join(' ') }}"
+  become: false
+  when: "'controller' in group_names"
+
+- name: Deploy the initial monitor
+  shell: "ceph-deploy mon create-initial"
+  args:
+    chdir: ~/ceph-cluster
+    creates: ~/ceph-cluster/ceph.client.admin.keyring
+  become: false
+  when: "'controller' in group_names"
+
+- name: Copy ceph configuration files
+  shell: "ceph-deploy admin {{ groups['openstack'] | map('extract', hostvars, 'ansible_hostname') | map('map_format', '%s.internal' ) | list | join(' ') }}"
+  args:
+    chdir: ~/ceph-cluster
+  become: false
+  when: "'controller' in group_names"
+
+- name: Prepare OSDs
+  shell: "ceph-deploy osd prepare {{ groups['openstack'] | map('extract', hostvars, 'ansible_hostname') | map('map_format', '%s.internal:/data/brick1' ) | list | join(' ') }} {{ groups['openstack'] | map('extract', hostvars, 'ansible_hostname') | map('map_format', '%s.internal:/data/brick2' ) | list | join(' ') }}"
+  args:
+    chdir: ~/ceph-cluster
   become: false
   when: "'controller' in group_names"
