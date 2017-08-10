@@ -1,6 +1,5 @@
 node('encoder') {
     properties([[$class: 'BuildConfigProjectProperty', name: '', namespace: '', resourceVersion: '', uid: ''], 
-                buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '5', numToKeepStr: '5')), 
                 [$class: 'GithubProjectProperty', displayName: '', projectUrlStr: 'https://github.com/devops-consultants/openstack-deploy/'], 
                 [$class: 'RebuildSettings', autoRebuild: false, rebuildDisabled: false], 
                 ])
