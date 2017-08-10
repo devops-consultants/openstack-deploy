@@ -3,7 +3,7 @@ controller
 compute
 
 [controller]
-controller.devops-consultants.com
+controller.cloud.devops-consultants.com
 
 [compute]
-compute1.devops-consultants.com
+compute.cloud.devops-consultants.com

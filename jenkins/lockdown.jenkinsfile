@@ -1,13 +1,11 @@
 node('encoder') {
     properties([[$class: 'BuildConfigProjectProperty', name: '', namespace: '', resourceVersion: '', uid: ''], 
-                buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '5', numToKeepStr: '5')), 
                 [$class: 'GithubProjectProperty', displayName: '', projectUrlStr: 'https://github.com/devops-consultants/openstack-deploy/'], 
-                [$class: 'RebuildSettings', autoRebuild: false, rebuildDisabled: false],  
+                [$class: 'RebuildSettings', autoRebuild: false, rebuildDisabled: false], 
                 ])
 
     timestamps {
     ansiColor('xterm') {
-        // some block
 
         stage('Checkout') {
             checkout scm
@@ -23,6 +21,7 @@ node('encoder') {
                     sh "which ansible"
                     sh "ansible --version"
                     sh "ansible-galaxy install -r requirements.yml"
+                    sh "ansible-playbook -v lockdown_server.yml"
                 }
             }
         }
