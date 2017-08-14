@@ -55,7 +55,7 @@
 
 - name: Create Ceph pool
   command: "ceph osd pool create {{ item.name }} {{ item.pg_size }}"
-  when: "'controller' in group_names and ceph_pools.stdout.find("{{ item }}") != -1"
+  when: "'controller' in group_names and ceph_pools.stdout.find('{{ item }}') != -1"
   with_items:
     - { name: 'images', pg_size: '16' }
     - { name: 'volumes', pg_size: '32' }
