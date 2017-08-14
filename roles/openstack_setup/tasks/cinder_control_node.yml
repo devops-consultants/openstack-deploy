@@ -23,7 +23,7 @@
     state: present
     name: "{{ lookup('env','CINDER_USER') }}"
     password: "{{ lookup('env','CINDER_PASSWORD') }}"
-    email: ""{{ lookup('env','CINDER_USER') }}"@localhost"
+    email: "{{ lookup('env','CINDER_USER') }}@localhost"
     update_password: on_create
     domain: default
   delegate_to: localhost
