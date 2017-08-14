@@ -107,7 +107,7 @@
     option: "{{ item.option }}"
     value: "{{ item.value }}"
   with_items:
-    - { section: database, option: connection, value: "mysql+pymysql://"{{ lookup('env','CINDER_USER') }}":{{ "{{ lookup('env','CINDER_PASSWORD') }}" }}@{{ db_host }}/cinder" }
+    - { section: database, option: connection, value: "mysql+pymysql://{{ lookup('env','CINDER_USER') }}:{{ lookup('env','CINDER_PASSWORD') }}@{{ db_host }}/cinder" }
     - { section: DEFAULT, option: rpc_backend, value: "rabbit" }
     - { section: oslo_messaging_rabbit, option: rabbit_host, value: "{{ rabbit_host }}" }
     - { section: oslo_messaging_rabbit, option: rabbit_port, value: "5671" }
