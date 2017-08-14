@@ -14,7 +14,7 @@
   lineinfile:
     dest: "/etc/apache2/sites-available/15-horizon_vhost.conf"
     regexp: "^  RedirectMatch permanent"
-    line: "  RedirectMatch permanent  ^(?!/\.well-known/acme-challenge/).* https://{{ inventory_hostname }}"
+    line: "  RedirectMatch permanent  ^(?!/\\.well-known/acme-challenge/).* https://{{ inventory_hostname }}"
     state: present
   when: apache_status.stat.exists
   notify: restart apache
