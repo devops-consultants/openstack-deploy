@@ -10,6 +10,16 @@
     mode: 0755
   when: apache_status.stat.exists
 
+- name: Update horizon config to not redirect Certbot requests
+  lineinfile:
+    dest: "/etc/apache2/sites-available/15-horizon_vhost.conf"
+    regexp: "^  RedirectMatch permanent"
+    line: "  RedirectMatch permanent  ^(?!/\.well-known/acme-challenge/).* https://{{ inventory_hostname }}"
+    state: present
+  when: apache_status.stat.exists
+  notify: restart apache
+
+
 - name: Ensure apache is running
   service:
     name: apache2

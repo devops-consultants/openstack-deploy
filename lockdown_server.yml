@@ -8,7 +8,7 @@
 
   roles:
     - security
+    - ansible-shorewall
     - certificates
     - email
     - logwatch
-    - ansible-shorewall
