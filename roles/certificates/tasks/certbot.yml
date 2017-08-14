@@ -27,7 +27,7 @@
   when: apache_status.stat.exists
 
 - name: Install certbot and generate cert
-  command: "{{ certbot_script }} certonly --noninteractive --agree-tos --email {{ certbot_admin_email }} -d {{ inventory_hostname }} --webroot -w {{ horizon_webroot}}/html"
+  command: "{{ certbot_script }} certonly --noninteractive --agree-tos --email {{ certbot_admin_email }} -d {{ inventory_hostname }} --webroot -w {{ horizon_webroot}}"
   args:
     creates: "{{ certbot_output_dir }}/{{ inventory_hostname }}"
   when: apache_status.stat.exists
