@@ -82,11 +82,11 @@
   when: endpoints.stdout | from_json | json_query(endpoint_query) | count == 0
   with_items:
     - { interface: public, type: volume, region: RegionOne, url: 'http://{{ openstack_url }}:8776/v1/%(tenant_id)s'}
-    - { interface: admin, type: volume, region: RegionOne, url: 'http://{{ openstack_url }}:8776/v1/%(tenant_id)s'}
-    - { interface: internal, type: volume, region: RegionOne, url: 'http://{{ openstack_url }}:8776/v1/%(tenant_id)s'}
+    - { interface: admin, type: volume, region: RegionOne, url: 'http://{{ openstack_internal_url }}:8776/v1/%(tenant_id)s'}
+    - { interface: internal, type: volume, region: RegionOne, url: 'http://{{ openstack_internal_url }}:8776/v1/%(tenant_id)s'}
     - { interface: public, type: volumev2, region: RegionOne, url: 'http://{{ openstack_url }}:8776/v2/%(tenant_id)s'}
-    - { interface: admin, type: volumev2, region: RegionOne, url: 'http://{{ openstack_url }}:8776/v2/%(tenant_id)s'}
-    - { interface: internal, type: volumev2, region: RegionOne, url: 'http://{{ openstack_url }}:8776/v2/%(tenant_id)s'}
+    - { interface: admin, type: volumev2, region: RegionOne, url: 'http://{{ openstack_internal_url }}:8776/v2/%(tenant_id)s'}
+    - { interface: internal, type: volumev2, region: RegionOne, url: 'http://{{ openstack_internal_url }}:8776/v2/%(tenant_id)s'}
   delegate_to: localhost
   run_once: true
   become: false

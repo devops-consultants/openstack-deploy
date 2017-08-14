@@ -16,12 +16,20 @@ node('encoder') {
             withCredentials([usernamePassword(credentialsId: 'CINDER_USER', passwordVariable: 'CINDER_PASSWORD', usernameVariable: 'CINDER_USER'), 
                              usernamePassword(credentialsId: 'DESIGNATE_USER', passwordVariable: 'DESIGNATE_PASSWORD', usernameVariable: 'DESIGNATE_USER'), 
                              usernamePassword(credentialsId: 'RABBITMQ_USER', passwordVariable: 'RABBITMQ_PASSWORD', usernameVariable: 'RABBITMQ_USER'), 
-                             usernamePassword(credentialsId: 'MY_OPENSTACK_USER', passwordVariable: 'MY_OS_PASSWORD', usernameVariable: 'MY_OS_USER')]) {
+                             usernamePassword(credentialsId: 'MY_OPENSTACK_USER', passwordVariable: 'MY_OS_PASSWORD', usernameVariable: 'MY_OS_USER'),
+                             usernamePassword(credentialsId: 'OPENSTACK_ADMIN_USER', passwordVariable: 'OS_PASSWORD', usernameVariable: 'OS_USERNAME')]) {
 
-                withEnv(['ANSIBLE_FORCE_COLOR=true']) {
+                withEnv(['ANSIBLE_FORCE_COLOR=true',
+                        'OS_PROJECT_DOMAIN_ID=default',
+                        'OS_USER_DOMAIN_ID=default',
+                        'OS_TENANT_NAME=openstack',
+                        'OS_AUTH_URL=https://controller.cloud.devops-consultants.com:5000',
+                        'OS_IMAGE_API_VERSION=2',
+                        'OS_IDENTITY_API_VERSION=3']) {
                     sh "which ansible"
                     sh "ansible --version"
                     sh "ansible-galaxy install -r requirements.yml"
+                    sh "ansible-playbook -v openstack-setup.yml"
                 }
             }
         }

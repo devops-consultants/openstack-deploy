@@ -1,47 +1,66 @@
 ---
 
-- name: Stop and disable glusterfs
-  service:
-    name: glusterfs-server
-    state: stopped
-    enabled: false
-  when: storage_backend == "ceph"
+# - name: Stop and disable glusterfs
+#   service:
+#     name: glusterfs-server
+#     state: stopped
+#     enabled: false
+#   when: storage_backend == "ceph"
 
-- apt_key:
-    url: "https://download.ceph.com/keys/release.asc"
-    state: present
+# - apt_key:
+#     url: "https://download.ceph.com/keys/release.asc"
+#     state: present
 
-- apt_repository:
-    repo: "deb https://download.eu.ceph.com/debian/ {{ ansible_distribution_release }} main"
-    state: present
+# - apt_repository:
+#     repo: "deb https://download.eu.ceph.com/debian/ {{ ansible_distribution_release }} main"
+#     state: present
 
-- name: Install packages
-  package:
-    name: "{{ item }}"
-    state: latest
+# - name: Install packages
+#   package:
+#     name: "{{ item }}"
+#     state: latest
+#   with_items:
+#     - ceph-deploy
+#     - ntp
+#     - python-rbd
+#     - ceph-common
+
+# - user:
+#     name: "{{ ceph_deploy_user }}"
+#     comment: "Ceph Deploy User"
+#     password: "$6$HgEr5rgyXKOkcAp2$sExSd96/lGX.zvGQ1HbUxYjXzZNr9A5E3BKah24ZeeJL7eqqLCS9.Nplff4f4PD0YqbPLRd/QGnKIY7ZfNl6e."
+
+# - lineinfile:
+#     path: "/etc/sudoers.d/{{ ceph_deploy_user }}"
+#     create: yes
+#     mode: 0440
+#     regexp: "^{{ ceph_deploy_user }}"
+#     line: "{{ ceph_deploy_user }} ALL = (root) NOPASSWD:ALL"
+
+# - name: Set authorized key took from file
+#   authorized_key:
+#     user: "{{ ceph_deploy_user }}"
+#     state: present
+#     key: "{{ lookup('file', '/Users/rob/.ssh/id_rsa.pub') }}"
+
+- name: Install Ceph Client packages
+  shell: "ceph-deploy install --cli {{ groups['openstack'] | map('extract', hostvars, 'ansible_hostname') | map('map_format', '%s.internal' ) | list | join(' ') }}"
+  become: false
+  when: "'controller' in group_names"
+
+- name: List Ceph pools
+  command: "ceph osd pool ls"
+  register: ceph_pools
+  when: "'controller' in group_names"
+
+- name: Create Ceph pool
+  command: "ceph osd pool create {{ item.name }} {{ item.pg_size }}"
+  when: "'controller' in group_names and ceph_pools.stdout.find("{{ item }}") != -1"
   with_items:
-    - ceph-deploy
-    - ntp
-    - python-rbd
-    - ceph-common
-
-- user:
-    name: "{{ ceph_deploy_user }}"
-    comment: "Ceph Deploy User"
-    password: "$6$HgEr5rgyXKOkcAp2$sExSd96/lGX.zvGQ1HbUxYjXzZNr9A5E3BKah24ZeeJL7eqqLCS9.Nplff4f4PD0YqbPLRd/QGnKIY7ZfNl6e."
-
-- lineinfile:
-    path: "/etc/sudoers.d/{{ ceph_deploy_user }}"
-    create: yes
-    mode: 0440
-    regexp: "^{{ ceph_deploy_user }}"
-    line: "{{ ceph_deploy_user }} ALL = (root) NOPASSWD:ALL"
-
-- name: Set authorized key took from file
-  authorized_key:
-    user: "{{ ceph_deploy_user }}"
-    state: present
-    key: "{{ lookup('file', '/Users/rob/.ssh/id_rsa.pub') }}"
+    - { name: 'images', pg_size: '16' }
+    - { name: 'volumes', pg_size: '32' }
+    - { name: 'compute', pg_size: '32' }
+    - { name: 'backups', pg_size: '32' }
 
 - name: Setup Ceph Glance authentication
   command: "ceph auth get-or-create client.glance mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=images'"
