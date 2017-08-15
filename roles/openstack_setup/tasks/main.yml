@@ -18,6 +18,8 @@
     - { section: "vnc", option: novncproxy_base_url, value: "https://{{ openstack_url }}:6080/vnc_auto.html" }
   notify: restart nova-compute
 
+- include: users.yml
+
 # - name: Install packages
 #   apt:
 #     name: "{{ item }}"
@@ -39,5 +41,3 @@
 - include: cinder_storage_node.yml
 # - include: designate.yml
 - include: ceph_integration.yml
-
-- include: users.yml
