@@ -18,6 +18,10 @@
     - { section: "vnc", option: novncproxy_base_url, value: "https://{{ openstack_url }}:6080/vnc_auto.html" }
   notify: restart nova-compute
 
+- name: Ensure shade is installed
+  pip:
+    name: shade
+
 - include: ceph_prepare.yml
 
 - include: cinder_control_node.yml
