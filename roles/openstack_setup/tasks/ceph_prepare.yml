@@ -59,7 +59,7 @@
   with_items:
     - { name: 'images', pg_size: '16' }
     - { name: 'volumes', pg_size: '32' }
-    - { name: 'compute', pg_size: '32' }
+    - { name: 'vms', pg_size: '32' }
     - { name: 'backups', pg_size: '32' }
 
 - name: Setup Ceph Glance authentication
@@ -122,3 +122,26 @@
   template:
     src: secret.xml
     dest: /etc/ceph/secret.xml
+
+- name: Setup Ceph nova authentication
+  command: "ceph auth get-or-create client.compute mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=volumes, allow rwx pool=vms, allow rx pool=images'"
+  register: nova_auth
+  # when: "'controller' in group_names"
+
+- name: Copy nova keyring file
+  copy:
+    dest: /etc/ceph/ceph.client.compute.keyring
+    content: "{{ nova_auth.stdout }}"
+    owner: nova
+    group: nova
+    mode: 0640
+  # when: "'controller' in group_names"
+
+- name: Configure Ceph options in ceph.conf
+  ini_file:
+    path: //etc/ceph/ceph.conf
+    section: "{{ item.section }}"
+    option: "{{ item.option }}"
+    value: "{{ item.value }}"
+  with_items:
+    - { section: "client.compute", option: keyring, value: "/etc/ceph/ceph.client.compute.keyring" }
