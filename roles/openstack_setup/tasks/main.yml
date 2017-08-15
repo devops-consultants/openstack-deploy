@@ -23,7 +23,7 @@
     name: "{{ item }}"
     state: present
   with_items:
-    - pip 
+    - python-pip 
 
 - name: Ensure shade is installed
   pip:
