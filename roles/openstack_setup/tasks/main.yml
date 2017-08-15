@@ -24,10 +24,14 @@
     state: present
   with_items:
     - python-pip 
+  delegate_to: localhost
+  run_once: true
 
 - name: Ensure shade is installed
   pip:
     name: shade
+  delegate_to: localhost
+  run_once: true
 
 - include: ceph_prepare.yml
 
