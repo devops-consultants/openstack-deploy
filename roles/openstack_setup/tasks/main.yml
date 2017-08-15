@@ -18,20 +18,20 @@
     - { section: "vnc", option: novncproxy_base_url, value: "https://{{ openstack_url }}:6080/vnc_auto.html" }
   notify: restart nova-compute
 
-- name: Install packages
-  apt:
-    name: "{{ item }}"
-    state: present
-  with_items:
-    - python-pip 
-  delegate_to: localhost
-  run_once: true
+# - name: Install packages
+#   apt:
+#     name: "{{ item }}"
+#     state: present
+#   with_items:
+#     - python-pip 
+#   delegate_to: localhost
+#   run_once: true
 
-- name: Ensure shade is installed
-  pip:
-    name: shade
-  delegate_to: localhost
-  run_once: true
+# - name: Ensure shade is installed
+#   pip:
+#     name: shade
+#   delegate_to: localhost
+#   run_once: true
 
 - include: ceph_prepare.yml
 
