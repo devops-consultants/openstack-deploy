@@ -18,6 +18,13 @@
     - { section: "vnc", option: novncproxy_base_url, value: "https://{{ openstack_url }}:6080/vnc_auto.html" }
   notify: restart nova-compute
 
+- name: Install packages
+  apt:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - pip 
+
 - name: Ensure shade is installed
   pip:
     name: shade
