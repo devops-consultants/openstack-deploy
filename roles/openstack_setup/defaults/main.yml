@@ -5,7 +5,7 @@ openstack_region: RegionOne
 openstack_url: controller.cloud.devops-consultants.com
 openstack_internal_url: controller.cloud.devops-consultants.com.internal
 db_host: 172.16.0.3
-rabbit_host: controller.devops-consultants.com.internal
+rabbit_host: controller.cloud.devops-consultants.com.internal
 rabbit_userid: openstack
 memcached_host: 172.16.0.3
 cinder_host: 172.16.0.3
