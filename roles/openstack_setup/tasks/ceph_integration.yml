@@ -28,7 +28,7 @@
     - { section: DEFAULT, option: enabled_backends, value: "RBD-backend" }
     - { section: RBD-backend, option: volume_backend_name, value: "RBD-backend" }
     - { section: RBD-backend, option: rbd_pool, value: "volumes" }
-    - { section: RBD-backend, option: rbd_user, value: "cinder" }
+    - { section: RBD-backend, option: rbd_user, value: "client.cinder" }
     - { section: RBD-backend, option: rbd_secret_uuid, value: "{{ libvirt_uuid }}" }
     - { section: RBD-backend, option: volume_driver, value: "cinder.volume.drivers.rbd.RBDDriver" }
     - { section: RBD-backend, option: rbd_ceph_conf, value: "/etc/ceph/ceph.conf" }
