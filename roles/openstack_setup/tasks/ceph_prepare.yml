@@ -139,9 +139,12 @@
 
 - name: Configure Ceph options in ceph.conf
   ini_file:
-    path: //etc/ceph/ceph.conf
+    path: /etc/ceph/ceph.conf
     section: "{{ item.section }}"
     option: "{{ item.option }}"
     value: "{{ item.value }}"
   with_items:
     - { section: "client.compute", option: keyring, value: "/etc/ceph/ceph.client.compute.keyring" }
+    - { section: "client.glance", option: keyring, value: "/etc/ceph/ceph.client.glance.keyring" }
+    - { section: "client.cinder", option: keyring, value: "/etc/ceph/ceph.client.cinder.keyring" }
+    - { section: "client.cinder-backup", option: keyring, value: "/etc/ceph/ceph.client.cinder-backup.keyring" }
