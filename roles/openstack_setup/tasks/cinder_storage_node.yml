@@ -15,7 +15,7 @@
     option: "{{ item.option }}"
     value: "{{ item.value }}"
   with_items:
-    - { section: database, option: connection, value: "mysql+pymysql://lookup('env','CINDER_USER'):{{ lookup('env','CINDER_PASSWORD') }}@{{ db_host }}/cinder" }
+    - { section: database, option: connection, value: "mysql+pymysql://{{ lookup('env','CINDER_USER') }}:{{ lookup('env','CINDER_PASSWORD') }}@{{ db_host }}/cinder" }
     - { section: DEFAULT, option: rpc_backend, value: "rabbit" }
     - { section: oslo_messaging_rabbit, option: rabbit_host, value: "{{ rabbit_host }}" }
     - { section: oslo_messaging_rabbit, option: rabbit_userid, value: "{{ lookup('env','RABBITMQ_USER') }}" }
@@ -28,7 +28,7 @@
     - { section: keystone_authtoken, option: project_domain_name, value: "default" }
     - { section: keystone_authtoken, option: user_domain_name, value: "default" }
     - { section: keystone_authtoken, option: project_name, value: "services" }
-    - { section: keystone_authtoken, option: username, value: "lookup('env','CINDER_USER')" }
+    - { section: keystone_authtoken, option: username, value: "{{ lookup('env','CINDER_USER') }}" }
     - { section: keystone_authtoken, option: password, value: "{{ lookup('env','CINDER_PASSWORD') }}" }
     - { section: DEFAULT, option: my_ip, value: "{{ cinder_host }}" }
     - { section: DEFAULT, option: glance_api_servers, value: "http://{{ glance_host }}:9292" }
