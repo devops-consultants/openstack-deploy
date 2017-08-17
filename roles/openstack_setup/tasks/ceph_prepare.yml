@@ -63,17 +63,17 @@
     - { name: 'backups', pg_size: '32' }
 
 - name: Setup Ceph Glance authentication
-  command: "ceph auth get-or-create glance mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=images'"
+  command: "ceph auth get-or-create client.glance mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=images'"
   register: glance_auth
   when: "'controller' in group_names"
 
 - name: Setup Ceph cinder-backup authentication
-  command: "ceph auth get-or-create cinder-backup mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=backups'"
+  command: "ceph auth get-or-create client.cinder-backup mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=backups'"
   register: cinder_backup_auth
   when: "'controller' in group_names"
 
 - name: Setup Ceph cinder authentication
-  command: "ceph auth get-or-create cinder mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=volumes, allow rwx pool=vms, allow rwx pool=images'"
+  command: "ceph auth get-or-create client.cinder mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=volumes, allow rwx pool=vms, allow rwx pool=images'"
   register: cinder_auth
   when: "'controller' in group_names"
 
@@ -114,7 +114,7 @@
   when: "'controller' in group_names"
 
 - name: Get cinder key for libvirt
-  shell: 'ceph auth get-key cinder > /etc/ceph/client.cinder.key'
+  shell: 'ceph auth get-key client.cinder > /etc/ceph/client.cinder.key'
   args:
     creates: /etc/ceph/client.cinder.key
 
@@ -124,7 +124,7 @@
     dest: /etc/ceph/secret.xml
 
 - name: Setup Ceph nova authentication
-  command: "ceph auth get-or-create compute mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=volumes, allow rwx pool=vms, allow rx pool=images'"
+  command: "ceph auth get-or-create client.compute mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=volumes, allow rwx pool=vms, allow rx pool=images'"
   register: nova_auth
   # when: "'controller' in group_names"
 

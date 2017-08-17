@@ -87,7 +87,7 @@
   command: "virsh secret-define --file /etc/ceph/compute_secret.xml"
 
 - name: Get compute key
-  command: "ceph auth get-key compute"
+  command: "ceph auth get-key client.compute"
   register: compute_key
 
 - name: Set virsh compute secret
