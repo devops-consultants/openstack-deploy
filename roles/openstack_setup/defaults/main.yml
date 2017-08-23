@@ -16,3 +16,7 @@ designate_host: 172.16.0.3
 storage_backend: ceph
 # storage_backend: glusterfs
 ceph_deploy_user: cephdeploy
+
+glance_client: images
+cinder_client: cinder
+nova_client: nova

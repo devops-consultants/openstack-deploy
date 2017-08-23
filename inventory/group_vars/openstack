@@ -43,5 +43,5 @@ shorewall_stoppedrules:
  - { dest: "$FW", proto: tcp, dport: 22, action: ACCEPT }
  - { dest: "$FW", proto: icmp, dport: echo-request, action: ACCEPT }
 
-libvirt_uuid: 688C9873-B443-47E4-BF79-DEB092D0D922
+cinder_uuid: 688C9873-B443-47E4-BF79-DEB092D0D922
 compute_uuid: 3AA3C174-0982-42F0-83BE-A57FD9FC2671

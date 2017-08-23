@@ -43,6 +43,15 @@
 #     state: present
 #     key: "{{ lookup('file', '/Users/rob/.ssh/id_rsa.pub') }}"
 
+- name: Install Cinder packages
+  apt:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - cinder-api 
+    - cinder-scheduler
+  when: "'controller' in group_names"
+
 - name: Install Ceph Client packages
   shell: "ceph-deploy install --cli {{ groups['openstack'] | map('extract', hostvars, 'ansible_hostname') | map('map_format', '%s.internal' ) | list | join(' ') }}"
   become: false
@@ -63,7 +72,7 @@
     - { name: 'backups', pg_size: '32' }
 
 - name: Setup Ceph Glance authentication
-  command: "ceph auth get-or-create client.glance mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=images'"
+  command: "ceph auth get-or-create client.{{ glance_client }} mon 'allow r' osd 'allow class-read object_prefix rdb_children, allow rwx pool=images'"
   register: glance_auth
   when: "'controller' in group_names"
 
@@ -73,31 +82,28 @@
   when: "'controller' in group_names"
 
 - name: Setup Ceph cinder authentication
-  command: "ceph auth get-or-create client.cinder mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=volumes, allow rwx pool=vms, allow rwx pool=images'"
+  command: "ceph auth get-or-create client.{{ cinder_client }} mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=volumes, allow rx pool=images'"
   register: cinder_auth
   when: "'controller' in group_names"
 
+- name: Setup Ceph nova authentication
+  command: "ceph auth get-or-create client.{{ nova_client }} mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=vms, allow rx pool=images'"
+  register: nova_auth
+  # when: "'controller' in group_names"
+
 - name: Copy glance keyring file
   copy:
-    dest: /etc/ceph/ceph.client.glance.keyring
+    dest: /etc/ceph/ceph.client.{{ glance_client }}.keyring
     content: "{{ glance_auth.stdout }}"
     owner: glance
     group: glance
     mode: 0640
   when: "'controller' in group_names"
     
-- name: Install Cinder packages
-  apt:
-    name: "{{ item }}"
-    state: present
-  with_items:
-    - cinder-api 
-    - cinder-scheduler
-  when: "'controller' in group_names"
 
 - name: Copy cinder keyring file
   copy:
-    dest: /etc/ceph/ceph.client.cinder.keyring
+    dest: /etc/ceph/ceph.client.{{ cinder_client }}.keyring
     content: "{{ cinder_auth.stdout }}"
     owner: cinder
     group: cinder
@@ -113,29 +119,34 @@
     mode: 0644
   when: "'controller' in group_names"
 
-- name: Get cinder key for libvirt
-  shell: 'ceph auth get-key client.cinder > /etc/ceph/client.cinder.key'
-  args:
-    creates: /etc/ceph/client.cinder.key
-
-- name: Setup libvirt secrets.xml
-  template:
-    src: secret.xml
-    dest: /etc/ceph/secret.xml
-
-- name: Setup Ceph nova authentication
-  command: "ceph auth get-or-create client.compute mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=volumes, allow rwx pool=vms, allow rx pool=images'"
-  register: nova_auth
-  # when: "'controller' in group_names"
-
 - name: Copy nova keyring file
   copy:
-    dest: /etc/ceph/ceph.client.compute.keyring
+    dest: /etc/ceph/ceph.client.{{ nova_client }}.keyring
     content: "{{ nova_auth.stdout }}"
     owner: nova
     group: nova
     mode: 0640
   # when: "'controller' in group_names"
+
+- name: Get cinder key for libvirt
+  shell: 'ceph auth get-key client.{{ cinder_client }} > /etc/ceph/client.{{ cinder_client }}.key'
+  args:
+    creates: /etc/ceph/client.{{ cinder_client }}.key
+
+- name: Setup Cinder libvirt secrets.xml
+  template:
+    src: secret.xml
+    dest: /etc/ceph/{{ cinder_client }}_secret.xml
+
+- name: Get compute key for libvirt
+  command: "ceph auth get-key client.{{ nova_client }} > /etc/ceph/client.{{ nova_client }}.key"
+  args:
+    creates: /etc/ceph/client.{{ nova_client }}.key
+
+- name: Setup Nova libvirt secrets.xml
+  template:
+    src: compute_secret.xml
+    dest: /etc/ceph/{{ nova_client }}_secret.xml
 
 - name: Configure Ceph options in ceph.conf
   ini_file:
@@ -144,7 +155,7 @@
     option: "{{ item.option }}"
     value: "{{ item.value }}"
   with_items:
-    - { section: "client.compute", option: keyring, value: "/etc/ceph/ceph.client.compute.keyring" }
-    - { section: "client.glance", option: keyring, value: "/etc/ceph/ceph.client.glance.keyring" }
-    - { section: "client.cinder", option: keyring, value: "/etc/ceph/ceph.client.cinder.keyring" }
+    - { section: "client.{{ nova_client }}", option: keyring, value: "/etc/ceph/ceph.client.{{ nova_client }}.keyring" }
+    - { section: "client.{{ glance_client }}", option: keyring, value: "/etc/ceph/ceph.client.{{ glance_client }}.keyring" }
+    - { section: "client.{{ cinder_client }}", option: keyring, value: "/etc/ceph/ceph.client.{{ cinder_client }}.keyring" }
     - { section: "client.cinder-backup", option: keyring, value: "/etc/ceph/ceph.client.cinder-backup.keyring" }

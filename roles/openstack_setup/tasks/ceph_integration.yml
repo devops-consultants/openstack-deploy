@@ -7,10 +7,10 @@
     option: "{{ item.option }}"
     value: "{{ item.value }}"
   with_items:
-    - { section: glance_store, option: stores, value: "glance.store.rbd.Store,glance.store.http.Store" }
+    - { section: glance_store, option: stores, value: "glance.store.rbd.Store" }
     - { section: glance_store, option: default_store, value: "rbd" }
     - { section: glance_store, option: rbd_store_pool, value: "images" }
-    - { section: glance_store, option: rbd_store_user, value: "glance" }
+    - { section: glance_store, option: rbd_store_user, value: "{{ glance_client }}" }
     - { section: glance_store, option: rbd_store_ceph_conf, value: "/etc/ceph/ceph.conf" }
     - { section: glance_store, option: rbd_store_chunk_size, value: "8" }
     - { section: DEFAULT, option: show_multiple_locations, value: "True" }
@@ -25,18 +25,18 @@
     option: "{{ item.option }}"
     value: "{{ item.value }}"
   with_items:
-    - { section: DEFAULT, option: enabled_backends, value: "RBD-backend" }
-    - { section: RBD-backend, option: volume_backend_name, value: "RBD-backend" }
-    - { section: RBD-backend, option: rbd_pool, value: "volumes" }
-    - { section: RBD-backend, option: rbd_user, value: "cinder" }
-    - { section: RBD-backend, option: rbd_secret_uuid, value: "{{ libvirt_uuid }}" }
-    - { section: RBD-backend, option: volume_driver, value: "cinder.volume.drivers.rbd.RBDDriver" }
-    - { section: RBD-backend, option: rbd_ceph_conf, value: "/etc/ceph/ceph.conf" }
-    # - { section: RBD-backend, option: rbd_flatten_volume_from_snapshot, value: "false" }
-    # - { section: RBD-backend, option: rbd_max_clone_depth, value: "5" }
-    # - { section: RBD-backend, option: rbd_store_chunk_size, value: "4" }
-    # - { section: RBD-backend, option: rados_connect_timeout, value: "-1" }
-    # - { section: RBD-backend, option: glance_api_version, value: "2" }
+    - { section: DEFAULT, option: enabled_backends, value: "ceph" }
+    # - { section: ceph, option: volume_backend_name, value: "RBD-backend" }
+    - { section: ceph, option: rbd_pool, value: "volumes" }
+    - { section: ceph, option: rbd_user, value: "{{ cinder_client }}" }
+    - { section: ceph, option: rbd_secret_uuid, value: "{{ cinder_uuid }}" }
+    - { section: ceph, option: volume_driver, value: "cinder.volume.drivers.rbd.RBDDriver" }
+    - { section: ceph, option: rbd_ceph_conf, value: "/etc/ceph/ceph.conf" }
+    - { section: ceph, option: rbd_flatten_volume_from_snapshot, value: "false" }
+    - { section: ceph, option: rbd_max_clone_depth, value: "5" }
+    - { section: ceph, option: rbd_store_chunk_size, value: "4" }
+    - { section: ceph, option: rados_connect_timeout, value: "-1" }
+    - { section: ceph, option: glance_api_version, value: "2" }
   notify: restart cinder-api
   notify: restart cinder-volume
   when: "'controller' in group_names"
@@ -65,31 +65,30 @@
     option: "{{ item.option }}"
     value: "{{ item.value }}"
   with_items:
+    - { section: DEFAULT, option: force_raw_images, value: "True" }
+    - { section: DEFAULT, option: disk_cachemodes, value: "writeback" }
     - { section: libvirt, option: images_rbd_pool, value: "vms" }
     - { section: libvirt, option: images_type, value: "rbd" }
     - { section: libvirt, option: images_rbd_ceph_conf, value: "/etc/ceph/ceph.conf" }
-    - { section: libvirt, option: rbd_user, value: "compute" }
+    - { section: libvirt, option: rbd_user, value: "{{ nova_client }}" }
     - { section: libvirt, option: rbd_secret_uuid, value: "{{ compute_uuid }}" }
-    - { section: libvirt, option: disk_cachemodes, value: "network=writeback" }
-    - { section: libvirt, option: inject_password, value: "false" }
-    - { section: libvirt, option: inject_key, value: "false" }
-    - { section: libvirt, option: inject_partition, value: "-2" }
-    - { section: libvirt, option: live_migration_flag, value: "VIR_MIGRATE_UNDEFINE_SOURCE,VIR_MIGRATE_PEER2PEER,VIR_MIGRATE_LIVE,VIR_MIGRATE_PERSIST_DEST,VIR_MIGRATE_TUNNELLED" }
-    - { section: libvirt, option: hw_disk_discard, value: "unmap" }
+    # - { section: libvirt, option: disk_cachemodes, value: "writeback" }
+    # - { section: libvirt, option: inject_password, value: "false" }
+    # - { section: libvirt, option: inject_key, value: "false" }
+    # - { section: libvirt, option: inject_partition, value: "-2" }
+    # - { section: libvirt, option: live_migration_flag, value: "VIR_MIGRATE_UNDEFINE_SOURCE,VIR_MIGRATE_PEER2PEER,VIR_MIGRATE_LIVE,VIR_MIGRATE_PERSIST_DEST,VIR_MIGRATE_TUNNELLED" }
+    # - { section: libvirt, option: hw_disk_discard, value: "unmap" }
   notify: restart nova-compute
 
-- name: Setup libvirt secrets.xml
-  template:
-    src: compute_secret.xml
-    dest: /etc/ceph/compute_secret.xml
+- name: Create virsh cinder secret
+  command: "virsh secret-define --file /etc/ceph/{{ cinder_client }}_secret.xml"
+
+- name: Set virsh cinder secret
+  command: " virsh secret-set-value --secret {{ cinder_uuid }} --base64 $(cat /etc/ceph/client.{{ cinder_client }}.key)"
 
 - name: Create virsh compute secret
-  command: "virsh secret-define --file /etc/ceph/compute_secret.xml"
-
-- name: Get compute key
-  command: "ceph auth get-key client.compute"
-  register: compute_key
+  command: "virsh secret-define --file /etc/ceph/{{ nova_client }}_secret.xml"
 
 - name: Set virsh compute secret
-  command: " virsh secret-set-value --secret {{ compute_uuid }} --base64 {{ compute_key.stdout }}"
+  command: " virsh secret-set-value --secret {{ compute_uuid }} --base64 $(cat /etc/ceph/client.{{ nova_client }}.key)"
   
