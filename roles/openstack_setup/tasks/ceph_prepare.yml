@@ -130,8 +130,6 @@
 
 - name: Get Cinder key for libvirt
   shell: 'ceph auth get-key client.{{ cinder_client }}'
-  args:
-    creates: /etc/ceph/client.{{ cinder_client }}.key
   when: "'controller' in group_names"
   register: cinder_key
 
@@ -143,8 +141,6 @@
 
 - name: Get Nova key for libvirt
   command: "ceph auth get-key client.{{ nova_client }}"
-  args:
-    creates: /etc/ceph/client.{{ nova_client }}.key
   register: nova_key
 
 - name: Setup Nova libvirt secrets.xml

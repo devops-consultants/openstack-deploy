@@ -80,17 +80,17 @@
     # - { section: libvirt, option: hw_disk_discard, value: "unmap" }
   notify: restart nova-compute
 
-- name: Create virsh cinder secret
+- name: Create virsh Cinder secret
   command: "virsh secret-define --file /etc/ceph/{{ cinder_client }}_secret.xml"
   when: "'controller' in group_names"
 
-- name: Set virsh cinder secret
+- name: Set virsh Cinder secret
   command: " virsh secret-set-value --secret {{ cinder_uuid }} --base64 {{ cinder_key.stdout }}"
   when: "'controller' in group_names"
 
-- name: Create virsh compute secret
+- name: Create virsh Nova secret
   command: "virsh secret-define --file /etc/ceph/{{ nova_client }}_secret.xml"
 
-- name: Set virsh compute secret
+- name: Set virsh Nova secret
   command: " virsh secret-set-value --secret {{ compute_uuid }} --base64 {{ nova_key.stdout }}"
   
